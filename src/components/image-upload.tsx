@@ -23,18 +23,19 @@ async function downscale(file: File): Promise<Blob> {
     let width = Math.max(1, Math.round(bitmap.width * scale));
     let height = Math.max(1, Math.round(bitmap.height * scale));
     const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Could not process image");
     context.drawImage(bitmap, 0, 0, width, height);
 
     while (true) {
-      for (const quality of [0.85, 0.7, 0.55, 0.4]) {
-        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-        if (blob && blob.size <= MAX_UPLOAD_BYTES) return blob;
-      }
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.82));
+      if (!blob) throw new Error("Could not encode image");
+      if (blob.size <= MAX_UPLOAD_BYTES) return blob;
 
-      width = Math.max(1, Math.floor(width * 0.8));
-      height = Math.max(1, Math.floor(height * 0.8));
+      width = Math.max(1, Math.floor(width * 0.85));
+      height = Math.max(1, Math.floor(height * 0.85));
       if (width === canvas.width && height === canvas.height) {
         throw new Error("Could not compress image to the 2 MB upload limit");
       }
