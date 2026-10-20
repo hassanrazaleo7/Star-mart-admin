@@ -1,4 +1,5 @@
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { issueSignedToken } from "@vercel/blob";
+import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { getCurrentSession } from "@/lib/auth/session";
@@ -6,31 +7,43 @@ import { isManager } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
-/** Token exchange for direct browser uploads to Vercel Blob (product images). */
+function normalizeWebhookPublicKey(key: string): string {
+  if (key.includes("-----BEGIN PUBLIC KEY-----")) return key;
+  return `-----BEGIN PUBLIC KEY-----\n${key}\n-----END PUBLIC KEY-----`;
+}
+
+/** Authorize direct browser uploads to Vercel Blob (product images). */
 export async function POST(request: Request): Promise<NextResponse> {
-  if (!env.blobConfigured) {
+  if (!env.BLOB_STORE_ID || !env.BLOB_WEBHOOK_PUBLIC_KEY) {
     return NextResponse.json({ error: "Image upload is not configured" }, { status: 503 });
   }
   const ctx = await getCurrentSession();
   if (!ctx || !(isManager(ctx.user.role) || ctx.user.role === "vendor")) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const body = (await request.json()) as HandleUploadBody;
+  const body = (await request.json()) as HandleUploadPresignedBody;
   try {
-    const result = await handleUpload({
+    const result = await handleUploadPresigned({
       body,
       request,
-      onBeforeGenerateToken: async (pathname) => {
+      getSignedToken: async (pathname) => {
         if (!pathname.startsWith("products/")) throw new Error("Invalid upload path");
         return {
-          allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
-          maximumSizeInBytes: 2 * 1024 * 1024,
-          addRandomSuffix: true,
-          tokenPayload: JSON.stringify({ userId: ctx.user.id }),
+          token: await issueSignedToken({
+            pathname,
+            operations: ["put"],
+            allowedContentTypes: ["image/jpeg"],
+            maximumSizeInBytes: 2 * 1024 * 1024,
+            storeId: env.BLOB_STORE_ID,
+          }),
+          urlOptions: {
+            allowedContentTypes: ["image/jpeg"],
+            maximumSizeInBytes: 2 * 1024 * 1024,
+          },
         };
       },
-      // Vercel calls this webhook after the upload; it never reaches localhost, so the
-      // product form submits the returned URL itself (validated server-side).
+      webhookPublicKey: normalizeWebhookPublicKey(env.BLOB_WEBHOOK_PUBLIC_KEY),
+      // Vercel calls this webhook after the upload; the form submits the returned URL itself.
       onUploadCompleted: async () => {},
     });
     return NextResponse.json(result);

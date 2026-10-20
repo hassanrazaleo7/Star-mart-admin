@@ -19,6 +19,8 @@ const schema = z.object({
   PASSWORD_HIBP_CHECK: optionalBool(),
   // Integrations (all optional: the app runs without them and shows "not configured").
   BLOB_READ_WRITE_TOKEN: optionalString(2000),
+  BLOB_STORE_ID: optionalString(200),
+  BLOB_WEBHOOK_PUBLIC_KEY: optionalString(2000),
   BREVO_API_KEY: optionalString(500),
   BREVO_SENDER_EMAIL: z.preprocess(emptyToUndefined, z.email().optional()),
   BREVO_SENDER_NAME: optionalString(100),
@@ -38,6 +40,6 @@ export const env = {
   PASSWORD_HIBP_CHECK: parsed.data.PASSWORD_HIBP_CHECK === "true",
   BREVO_DRY_RUN: parsed.data.BREVO_DRY_RUN === "true",
   isProduction: parsed.data.NODE_ENV === "production",
-  blobConfigured: Boolean(parsed.data.BLOB_READ_WRITE_TOKEN),
+  blobConfigured: Boolean(parsed.data.BLOB_STORE_ID && parsed.data.BLOB_WEBHOOK_PUBLIC_KEY),
   emailConfigured: Boolean(parsed.data.BREVO_API_KEY && parsed.data.BREVO_SENDER_EMAIL),
 };

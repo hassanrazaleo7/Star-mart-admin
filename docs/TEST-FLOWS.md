@@ -72,7 +72,7 @@ The reset only drops the `star_mart` and `drizzle` schemas. It never touches oth
 
 | Integration | Env var | Behaviour when missing |
 |---|---|---|
-| Product images (Vercel Blob) | `BLOB_READ_WRITE_TOKEN` | Image field shows "not configured"; upload endpoint returns 503 |
+| Product images (Vercel Blob) | `BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY` | Image field shows "not configured"; upload endpoint returns 503 |
 | Email (Brevo) | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME` | Queued emails fail with a clear reason. Set `BREVO_DRY_RUN=true` to render and log emails instead of sending |
 | Email cron | `CRON_SECRET` (16+ chars) | `/api/jobs/email` returns 401 without the right secret |
 | Pwned-password check | `PASSWORD_HIBP_CHECK=true` | Off by default |

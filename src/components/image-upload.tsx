@@ -1,6 +1,6 @@
 "use client";
 
-import { upload } from "@vercel/blob/client";
+import { uploadPresigned } from "@vercel/blob/client";
 import { ImageIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -43,7 +43,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
     try {
       const blob = await downscale(file);
       const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "image";
-      const result = await upload(`${folder}/${name}.jpg`, blob, {
+      const result = await uploadPresigned(`${folder}/${name}-${crypto.randomUUID()}.jpg`, blob, {
         access: "public",
         handleUploadUrl: "/api/blob/upload",
         contentType: "image/jpeg",
@@ -90,7 +90,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
               <p className="text-xs text-muted-foreground">JPEG, PNG or WebP. Resized to {MAX_EDGE}px before upload.</p>
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">Image upload is not configured. Set BLOB_READ_WRITE_TOKEN (Vercel Blob) to enable it.</p>
+            <p className="text-xs text-muted-foreground">Image upload is not configured. Set BLOB_STORE_ID and BLOB_WEBHOOK_PUBLIC_KEY in your environment.</p>
           )}
           {error ? (
             <Alert variant="destructive">
