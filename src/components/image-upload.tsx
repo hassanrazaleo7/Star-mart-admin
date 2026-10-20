@@ -33,6 +33,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
   const [url, setUrl] = useState(initialUrl ?? "");
   const [pathname, setPathname] = useState(initialPathname ?? "");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +41,9 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
     if (!file) return;
     setError(null);
     setBusy(true);
+    setProgress(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 120_000);
     try {
       const blob = await downscale(file);
       const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "image";
@@ -47,13 +51,21 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
         access: "public",
         handleUploadUrl: "/api/blob/upload",
         contentType: "image/jpeg",
+        abortSignal: controller.signal,
+        onUploadProgress: ({ percentage }) => setProgress(percentage),
       });
       setUrl(result.url);
       setPathname(result.pathname);
     } catch (err) {
-      setError((err as Error).message || "Upload failed");
+      setError(
+        controller.signal.aborted
+          ? "Upload timed out. Check Vercel dev logs and Blob OIDC configuration, then try again."
+          : (err as Error).message || "Upload failed",
+      );
     } finally {
+      window.clearTimeout(timeout);
       setBusy(false);
+      setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -78,7 +90,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
                   <UploadIcon />
-                  {busy ? "Uploading…" : url ? "Replace image" : "Upload image"}
+                  {busy ? (progress === null ? "Preparing upload…" : `Uploading ${progress}%…`) : url ? "Replace image" : "Upload image"}
                 </Button>
                 {url ? (
                   <Button type="button" variant="ghost" size="sm" onClick={() => { setUrl(""); setPathname(""); }}>

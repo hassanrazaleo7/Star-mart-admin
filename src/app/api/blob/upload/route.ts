@@ -17,12 +17,15 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!env.BLOB_STORE_ID || !env.BLOB_WEBHOOK_PUBLIC_KEY) {
     return NextResponse.json({ error: "Image upload is not configured" }, { status: 503 });
   }
-  const ctx = await getCurrentSession();
-  if (!ctx || !(isManager(ctx.user.role) || ctx.user.role === "vendor")) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-  const body = (await request.json()) as HandleUploadPresignedBody;
   try {
+    const body = (await request.json()) as HandleUploadPresignedBody;
+    if (body.type === "blob.generate-presigned-url") {
+      const ctx = await getCurrentSession();
+      if (!ctx || !(isManager(ctx.user.role) || ctx.user.role === "vendor")) {
+        return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      }
+    }
+
     const result = await handleUploadPresigned({
       body,
       request,
@@ -43,7 +46,6 @@ export async function POST(request: Request): Promise<NextResponse> {
         };
       },
       webhookPublicKey: normalizeWebhookPublicKey(env.BLOB_WEBHOOK_PUBLIC_KEY),
-      // Vercel calls this webhook after the upload; the form submits the returned URL itself.
       onUploadCompleted: async () => {},
     });
     return NextResponse.json(result);
