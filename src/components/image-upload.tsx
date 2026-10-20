@@ -14,18 +14,37 @@ type Props = {
 };
 
 const MAX_EDGE = 1200;
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 
 async function downscale(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-  if (scale === 1 && file.size < 400_000) return file;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("Could not process image"))), "image/jpeg", 0.85),
-  );
+  try {
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    let width = Math.max(1, Math.round(bitmap.width * scale));
+    let height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not process image");
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    while (true) {
+      for (const quality of [0.85, 0.7, 0.55, 0.4]) {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+        if (blob && blob.size <= MAX_UPLOAD_BYTES) return blob;
+      }
+
+      width = Math.max(1, Math.floor(width * 0.8));
+      height = Math.max(1, Math.floor(height * 0.8));
+      if (width === canvas.width && height === canvas.height) {
+        throw new Error("Could not compress image to the 2 MB upload limit");
+      }
+      canvas.width = width;
+      canvas.height = height;
+      context.drawImage(bitmap, 0, 0, width, height);
+    }
+  } finally {
+    bitmap.close();
+  }
 }
 
 /** Direct-to-Blob image upload; the resulting URL is submitted with the surrounding form. */
@@ -99,7 +118,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
                   </Button>
                 ) : null}
               </div>
-              <p className="text-xs text-muted-foreground">JPEG, PNG or WebP. Resized to {MAX_EDGE}px before upload.</p>
+              <p className="text-xs text-muted-foreground">JPEG, PNG or WebP, resized to {MAX_EDGE}px and compressed to fit the 2 MB upload limit.</p>
             </>
           ) : (
             <p className="text-xs text-muted-foreground">Image upload is not configured. Set BLOB_STORE_ID and BLOB_WEBHOOK_PUBLIC_KEY in your environment.</p>
