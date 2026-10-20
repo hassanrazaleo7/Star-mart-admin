@@ -7,6 +7,10 @@ import { isManager } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+const BLOB_CONFIGURATION_ERROR =
+  "Image upload needs a Blob write credential. Set BLOB_READ_WRITE_TOKEN for local development or enable Vercel OIDC.";
+
 function normalizeWebhookPublicKey(key: string): string {
   if (key.includes("-----BEGIN PUBLIC KEY-----")) return key;
   return `-----BEGIN PUBLIC KEY-----\n${key}\n-----END PUBLIC KEY-----`;
@@ -14,8 +18,8 @@ function normalizeWebhookPublicKey(key: string): string {
 
 /** Authorize direct browser uploads to Vercel Blob (product images). */
 export async function POST(request: Request): Promise<NextResponse> {
-  if (!env.BLOB_STORE_ID || !env.BLOB_WEBHOOK_PUBLIC_KEY) {
-    return NextResponse.json({ error: "Image upload is not configured" }, { status: 503 });
+  if (!env.blobConfigured || !env.BLOB_STORE_ID || !env.BLOB_WEBHOOK_PUBLIC_KEY) {
+    return NextResponse.json({ error: BLOB_CONFIGURATION_ERROR }, { status: 503 });
   }
   try {
     const body = (await request.json()) as HandleUploadPresignedBody;
@@ -36,12 +40,13 @@ export async function POST(request: Request): Promise<NextResponse> {
             pathname,
             operations: ["put"],
             allowedContentTypes: ["image/jpeg"],
-            maximumSizeInBytes: 2 * 1024 * 1024,
+            maximumSizeInBytes: MAX_IMAGE_BYTES,
             storeId: env.BLOB_STORE_ID,
+            token: env.BLOB_READ_WRITE_TOKEN,
           }),
           urlOptions: {
             allowedContentTypes: ["image/jpeg"],
-            maximumSizeInBytes: 2 * 1024 * 1024,
+            maximumSizeInBytes: MAX_IMAGE_BYTES,
           },
         };
       },
@@ -50,6 +55,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
     return NextResponse.json(result);
   } catch (error) {
+    console.error("[blob] upload authorization failed:", error);
     return NextResponse.json({ error: (error as Error).message }, { status: 400 });
   }
 }

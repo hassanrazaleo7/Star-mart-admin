@@ -122,7 +122,9 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
               <p className="text-xs text-muted-foreground">JPEG, PNG or WebP, resized to {MAX_EDGE}px and compressed to fit the 2 MB upload limit.</p>
             </>
           ) : (
-            <p className="text-xs text-muted-foreground">Image upload is not configured. Set BLOB_STORE_ID and BLOB_WEBHOOK_PUBLIC_KEY in your environment.</p>
+            <p className="text-xs text-muted-foreground">
+              Image upload needs a Blob write credential. Set BLOB_READ_WRITE_TOKEN for local development, or enable Vercel OIDC for deployment.
+            </p>
           )}
           {error ? (
             <Alert variant="destructive">

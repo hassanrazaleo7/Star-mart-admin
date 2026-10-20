@@ -40,6 +40,10 @@ export const env = {
   PASSWORD_HIBP_CHECK: parsed.data.PASSWORD_HIBP_CHECK === "true",
   BREVO_DRY_RUN: parsed.data.BREVO_DRY_RUN === "true",
   isProduction: parsed.data.NODE_ENV === "production",
-  blobConfigured: Boolean(parsed.data.BLOB_STORE_ID && parsed.data.BLOB_WEBHOOK_PUBLIC_KEY),
+  blobConfigured: Boolean(
+    parsed.data.BLOB_STORE_ID &&
+      parsed.data.BLOB_WEBHOOK_PUBLIC_KEY &&
+      (parsed.data.BLOB_READ_WRITE_TOKEN || process.env.VERCEL_OIDC_TOKEN),
+  ),
   emailConfigured: Boolean(parsed.data.BREVO_API_KEY && parsed.data.BREVO_SENDER_EMAIL),
 };
