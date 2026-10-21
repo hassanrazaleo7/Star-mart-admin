@@ -16,6 +16,7 @@ type Props = {
 
 const MAX_EDGE = 1200;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+const MAX_UPLOAD_DURATION_MS = 120_000;
 
 async function downscale(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
@@ -54,6 +55,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
   const [url, setUrl] = useState(initialUrl ?? "");
   const [pathname, setPathname] = useState(initialPathname ?? "");
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<"preparing" | "connecting" | "uploading">("preparing");
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,31 +66,49 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
     setBusy(true);
     onUploadingChange(true);
     setProgress(null);
+    setPhase("preparing");
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 120_000);
+    let currentStage = "preparing the image";
+    let timeout: number | undefined;
+    let timedOut = false;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeout = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        reject(new Error(`Image upload timed out while ${currentStage}.`));
+      }, MAX_UPLOAD_DURATION_MS);
+    });
     try {
-      const blob = await downscale(file);
-      const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "image";
-      const result = await uploadPresigned(`${folder}/${name}-${crypto.randomUUID()}.jpg`, blob, {
-        access: "public",
-        handleUploadUrl: "/api/blob/upload",
-        contentType: "image/jpeg",
-        abortSignal: controller.signal,
-        onUploadProgress: ({ percentage }) => setProgress(percentage),
-      });
-      setUrl(result.url);
-      setPathname(result.pathname);
+      await Promise.race([
+        (async () => {
+          const blob = await downscale(file);
+          currentStage = "connecting to Blob";
+          setPhase("connecting");
+          const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "image";
+          const result = await uploadPresigned(`${folder}/${name}-${crypto.randomUUID()}.jpg`, blob, {
+            access: "public",
+            handleUploadUrl: "/api/blob/upload",
+            contentType: "image/jpeg",
+            abortSignal: controller.signal,
+            onUploadProgress: ({ percentage }) => {
+              currentStage = "uploading to Blob";
+              setPhase("uploading");
+              setProgress(percentage);
+            },
+          });
+          setUrl(result.url);
+          setPathname(result.pathname);
+        })(),
+        timeoutPromise,
+      ]);
     } catch (err) {
-      setError(
-        controller.signal.aborted
-          ? "Upload timed out. Check Vercel dev logs and Blob OIDC configuration, then try again."
-          : (err as Error).message || "Upload failed",
-      );
+      setError((err as Error).message || (timedOut ? "Image upload timed out." : "Upload failed"));
     } finally {
-      window.clearTimeout(timeout);
+      if (timeout !== undefined) window.clearTimeout(timeout);
       setBusy(false);
       onUploadingChange(false);
       setProgress(null);
+      setPhase("preparing");
       if (inputRef.current) inputRef.current.value = "";
     }
   }
@@ -113,7 +133,15 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
                   <UploadIcon />
-                  {busy ? (progress === null ? "Preparing upload…" : `Uploading ${progress}%…`) : url ? "Replace image" : "Upload image"}
+                  {busy
+                    ? phase === "preparing"
+                      ? "Preparing image…"
+                      : phase === "connecting"
+                        ? "Connecting to Blob…"
+                        : `Uploading ${progress ?? 0}%…`
+                    : url
+                      ? "Replace image"
+                      : "Upload image"}
                 </Button>
                 {url ? (
                   <Button type="button" variant="ghost" size="sm" onClick={() => { setUrl(""); setPathname(""); }}>
