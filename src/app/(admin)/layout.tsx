@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const sidebarOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <SidebarProvider defaultOpen={sidebarOpen}>
+    <SidebarProvider defaultOpen={sidebarOpen} className="admin-theme">
       <AppSidebar groups={NAV[user.role]} title={settings.store.name} subtitle="Admin panel" home="/dashboard" pendingApprovals={pendingApprovals} />
       <SidebarInset>
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4">
