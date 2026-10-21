@@ -27,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Sidebar,
@@ -74,9 +75,10 @@ type Props = {
   subtitle?: string;
   home: string;
   pendingApprovals?: number;
+  showBrandLogo?: boolean;
 };
 
-export function AppSidebar({ groups, title, subtitle, home, pendingApprovals = 0 }: Props) {
+export function AppSidebar({ groups, title, subtitle, home, pendingApprovals = 0, showBrandLogo = false }: Props) {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href || (href !== home && pathname.startsWith(href + "/"));
 
@@ -85,14 +87,27 @@ export function AppSidebar({ groups, title, subtitle, home, pendingApprovals = 0
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link href={home} />} tooltip={title}>
-              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <StoreIcon className="size-4" />
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="font-heading font-semibold">{title}</span>
-                {subtitle ? <span className="text-xs text-muted-foreground">{subtitle}</span> : null}
-              </span>
+            <SidebarMenuButton
+              size="lg"
+              className={showBrandLogo ? "h-auto min-h-12 group-data-[collapsible=icon]:size-8" : undefined}
+              render={<Link href={home} />}
+              tooltip={title}
+            >
+              {showBrandLogo ? (
+                <span className="flex h-20 w-48 shrink-0 items-center justify-center rounded-lg bg-white p-1.5 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-1">
+                  <Image src="/star-mart-logo.png" alt="Star Mart" width={746} height={301} priority className="h-full w-full object-contain" />
+                </span>
+              ) : (
+                <>
+                  <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                    <StoreIcon className="size-4" />
+                  </span>
+                  <span className="flex flex-col leading-tight">
+                    <span className="font-heading font-semibold">{title}</span>
+                    {subtitle ? <span className="text-xs text-muted-foreground">{subtitle}</span> : null}
+                  </span>
+                </>
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
