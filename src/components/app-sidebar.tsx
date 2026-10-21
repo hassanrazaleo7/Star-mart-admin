@@ -90,7 +90,7 @@ export function AppSidebar({ groups, title, subtitle, home, pendingApprovals = 0
             <SidebarMenuButton
               size="lg"
               className={showBrandLogo ? "h-auto min-h-12 group-data-[collapsible=icon]:size-8" : undefined}
-              render={<Link href={home} />}
+              render={<Link href={home} data-brand-logo={showBrandLogo ? "" : undefined} />}
               tooltip={title}
             >
               {showBrandLogo ? (

@@ -131,7 +131,7 @@
 }
 
 @layer utilities {
-  .admin-theme :where(a, button, [role="button"], [role="tab"], [data-sidebar="menu-button"], [data-sidebar="group-action"]):not([class*="bg-primary"]):not([class*="bg-destructive"]):not([class*="text-destructive"]):hover {
+  .admin-theme :where(a, button, [role="button"], [role="tab"], [data-sidebar="menu-button"], [data-sidebar="group-action"]):not([data-brand-logo]):not([class*="bg-primary"]):not([class*="bg-destructive"]):not([class*="text-destructive"]):hover {
     color: #087443;
   }
 }
