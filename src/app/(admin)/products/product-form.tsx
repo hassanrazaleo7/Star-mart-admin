@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { BarcodeInput } from "@/components/barcode-input";
 import { ImageUpload } from "@/components/image-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -29,10 +29,11 @@ type Props = {
 
 export function ProductForm({ product, categories, suppliers, blobEnabled, defaultTaxBps, defaultReorderLevel }: Props) {
   const [state, formAction, pending] = useActionState<ProductFormState, FormData>(saveProductAction, { error: null });
+  const [imageUploading, setImageUploading] = useState(false);
   const isEdit = Boolean(product);
 
   return (
-    <form action={formAction} noValidate className="grid gap-6">
+    <form action={formAction} noValidate className="grid gap-6" onSubmit={(event) => { if (imageUploading) event.preventDefault(); }}>
       {product ? <input type="hidden" name="id" value={product.id} /> : null}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="grid gap-6">
@@ -113,7 +114,7 @@ export function ProductForm({ product, categories, suppliers, blobEnabled, defau
               <CardTitle>Image</CardTitle>
             </CardHeader>
             <CardContent>
-              <ImageUpload enabled={blobEnabled} initialUrl={product?.imageUrl} initialPathname={product?.imagePathname} />
+              <ImageUpload enabled={blobEnabled} initialUrl={product?.imageUrl} initialPathname={product?.imagePathname} onUploadingChange={setImageUploading} />
             </CardContent>
           </Card>
           <Card>
@@ -190,8 +191,8 @@ export function ProductForm({ product, categories, suppliers, blobEnabled, defau
         </Alert>
       ) : null}
       <div className="flex items-center gap-2">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : isEdit ? "Save changes" : "Create product"}
+        <Button type="submit" disabled={pending || imageUploading}>
+          {pending ? "Saving…" : imageUploading ? "Uploading image…" : isEdit ? "Save changes" : "Create product"}
         </Button>
         <Button variant="ghost" nativeButton={false} render={<Link href="/products" />}>
           Cancel

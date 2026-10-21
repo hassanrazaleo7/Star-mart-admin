@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { BarcodeInput } from "@/components/barcode-input";
 import { ImageUpload } from "@/components/image-upload";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,8 +17,9 @@ import { submitProductAction, type VendorFormState } from "../../actions";
 
 export function SubmitProductForm({ blobEnabled, categories }: { blobEnabled: boolean; categories: string[] }) {
   const [state, formAction, pending] = useActionState<VendorFormState, FormData>(submitProductAction, { error: null });
+  const [imageUploading, setImageUploading] = useState(false);
   return (
-    <form action={formAction} noValidate className="grid gap-6">
+    <form action={formAction} noValidate className="grid gap-6" onSubmit={(event) => { if (imageUploading) event.preventDefault(); }}>
       <Card>
         <CardContent>
           <FieldGroup>
@@ -38,14 +39,14 @@ export function SubmitProductForm({ blobEnabled, categories }: { blobEnabled: bo
               <Field><FieldLabel htmlFor="taxRateBps">Tax rate (%)</FieldLabel><Input id="taxRateBps" name="taxRateBps" type="number" step="0.01" min={0} max={100} defaultValue={0} /></Field>
             </div>
             <Field><FieldLabel htmlFor="description">Description</FieldLabel><Textarea id="description" name="description" rows={3} data-scanner-ignore /></Field>
-            <Field><FieldLabel>Image</FieldLabel><ImageUpload enabled={blobEnabled} /></Field>
+            <Field><FieldLabel>Image</FieldLabel><ImageUpload enabled={blobEnabled} onUploadingChange={setImageUploading} /></Field>
             <Field><FieldLabel htmlFor="note">Note to the store</FieldLabel><Textarea id="note" name="note" rows={2} data-scanner-ignore /></Field>
           </FieldGroup>
         </CardContent>
       </Card>
       {state.error ? <Alert variant="destructive"><AlertDescription>{state.error}</AlertDescription></Alert> : null}
       <div className="flex gap-2">
-        <Button type="submit" disabled={pending}>{pending ? "Submitting…" : "Submit for approval"}</Button>
+        <Button type="submit" disabled={pending || imageUploading}>{pending ? "Submitting…" : imageUploading ? "Uploading image…" : "Submit for approval"}</Button>
         <Button variant="ghost" nativeButton={false} render={<Link href="/vendor" />}>Cancel</Button>
       </div>
     </form>

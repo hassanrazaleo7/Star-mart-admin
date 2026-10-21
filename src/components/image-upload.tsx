@@ -11,6 +11,7 @@ type Props = {
   initialUrl?: string | null;
   initialPathname?: string | null;
   folder?: string;
+  onUploadingChange: (uploading: boolean) => void;
 };
 
 const MAX_EDGE = 1200;
@@ -49,7 +50,7 @@ async function downscale(file: File): Promise<Blob> {
 }
 
 /** Direct-to-Blob image upload; the resulting URL is submitted with the surrounding form. */
-export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "products" }: Props) {
+export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "products", onUploadingChange }: Props) {
   const [url, setUrl] = useState(initialUrl ?? "");
   const [pathname, setPathname] = useState(initialPathname ?? "");
   const [busy, setBusy] = useState(false);
@@ -61,6 +62,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
     if (!file) return;
     setError(null);
     setBusy(true);
+    onUploadingChange(true);
     setProgress(null);
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 120_000);
@@ -85,6 +87,7 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
     } finally {
       window.clearTimeout(timeout);
       setBusy(false);
+      onUploadingChange(false);
       setProgress(null);
       if (inputRef.current) inputRef.current.value = "";
     }

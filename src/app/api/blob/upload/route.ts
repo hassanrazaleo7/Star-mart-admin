@@ -51,7 +51,6 @@ export async function POST(request: Request): Promise<NextResponse> {
         };
       },
       webhookPublicKey: normalizeWebhookPublicKey(env.BLOB_WEBHOOK_PUBLIC_KEY),
-      onUploadCompleted: async () => {},
     });
     return NextResponse.json(result);
   } catch (error) {
