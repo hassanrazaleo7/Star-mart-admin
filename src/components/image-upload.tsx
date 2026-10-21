@@ -5,6 +5,7 @@ import { ImageIcon, Trash2Icon, UploadIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { isPrivateBlobUrl, isPublicBlobUrl, PRIVATE_BLOB_STORE_MESSAGE } from "@/lib/blob-urls";
 
 type Props = {
   enabled: boolean;
@@ -17,6 +18,35 @@ type Props = {
 const MAX_EDGE = 1200;
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 const MAX_UPLOAD_DURATION_MS = 120_000;
+const HANDLE_UPLOAD_URL = "/api/blob/upload";
+// The SDK replaces whatever the authorization route answered with this generic message
+// (prefixed with "Vercel Blob: " by its error class).
+const SDK_AUTHORIZATION_ERROR = /Failed to retrieve the presigned URL/i;
+
+/** Turns an upload failure into a message that says what to fix. */
+async function explainUploadError(error: unknown, target: string): Promise<string> {
+  const message = error instanceof Error ? error.message : "";
+  if (SDK_AUTHORIZATION_ERROR.test(message)) {
+    // Ask the authorization route again to surface its real reason (403/503 body, expired session…).
+    try {
+      const res = await fetch(HANDLE_UPLOAD_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "blob.generate-presigned-url", payload: { pathname: target, clientPayload: null, multipart: false } }),
+      });
+      if (res.redirected) return "Your session has expired. Sign in again and retry the upload.";
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (data?.error) return data.error;
+      return res.ok ? "Upload authorization failed temporarily. Try again." : `Upload authorization failed (HTTP ${res.status}).`;
+    } catch {
+      return "Could not reach the upload endpoint.";
+    }
+  }
+  if (/network request failed|failed to fetch|load failed|networkerror/i.test(message)) {
+    return "The browser could not reach Vercel Blob (network error, or a Content-Security-Policy that blocks https://vercel.com/api/blob/).";
+  }
+  return message || "Upload failed";
+}
 
 async function downscale(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
@@ -78,16 +108,17 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
         reject(new Error(`Image upload timed out while ${currentStage}.`));
       }, MAX_UPLOAD_DURATION_MS);
     });
+    const baseName = file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "image";
+    const target = `${folder}/${baseName}-${crypto.randomUUID()}.jpg`;
     try {
       await Promise.race([
         (async () => {
           const blob = await downscale(file);
           currentStage = "connecting to Blob";
           setPhase("connecting");
-          const name = file.name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "image";
-          const result = await uploadPresigned(`${folder}/${name}-${crypto.randomUUID()}.jpg`, blob, {
+          const result = await uploadPresigned(target, blob, {
             access: "public",
-            handleUploadUrl: "/api/blob/upload",
+            handleUploadUrl: HANDLE_UPLOAD_URL,
             contentType: "image/jpeg",
             abortSignal: controller.signal,
             onUploadProgress: ({ percentage }) => {
@@ -96,13 +127,18 @@ export function ImageUpload({ enabled, initialUrl, initialPathname, folder = "pr
               setProgress(percentage);
             },
           });
+          // A private store silently returns a URL that nobody can display; refuse it here so the
+          // form never submits it and the real fix (a public store) is shown.
+          if (!isPublicBlobUrl(result.url)) {
+            throw new Error(isPrivateBlobUrl(result.url) ? PRIVATE_BLOB_STORE_MESSAGE : "The upload returned an unexpected URL.");
+          }
           setUrl(result.url);
           setPathname(result.pathname);
         })(),
         timeoutPromise,
       ]);
     } catch (err) {
-      setError((err as Error).message || (timedOut ? "Image upload timed out." : "Upload failed"));
+      setError(timedOut ? `Image upload timed out while ${currentStage}.` : await explainUploadError(err, target));
     } finally {
       if (timeout !== undefined) window.clearTimeout(timeout);
       setBusy(false);

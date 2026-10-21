@@ -1,6 +1,9 @@
 // Imported by the proxy: keep this module free of database or Node-only deps.
 const isProduction = process.env.NODE_ENV === "production";
 
+// Browser uploads (@vercel/blob `uploadPresigned`) PUT the file to the SDK's API base on
+// vercel.com; the stored files are then served from *.public.blob.vercel-storage.com.
+const BLOB_API = "https://vercel.com/api/blob/";
 const BLOB_HOSTS = "https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com https://*.vercel-storage.com";
 
 export function createNonce(): string {
@@ -11,7 +14,7 @@ export function createNonce(): string {
  * Strict script policy (nonce + strict-dynamic). Inline styles are allowed on
  * purpose: shadcn's Base UI primitives position popups with inline style
  * attributes, which a nonce cannot cover. XSS protection comes from script-src.
- * Blob hosts are allowed for product images and direct browser uploads.
+ * Blob hosts are allowed for product images; the Blob API is allowed for direct browser uploads.
  */
 export function buildContentSecurityPolicy(nonce: string): string {
   const directives = [
@@ -21,7 +24,7 @@ export function buildContentSecurityPolicy(nonce: string): string {
     `img-src 'self' blob: data: ${BLOB_HOSTS}`,
     "media-src 'self' blob:",
     "font-src 'self'",
-    `connect-src 'self' ${BLOB_HOSTS}${isProduction ? "" : " ws: wss:"}`,
+    `connect-src 'self' ${BLOB_API} ${BLOB_HOSTS}${isProduction ? "" : " ws: wss:"}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

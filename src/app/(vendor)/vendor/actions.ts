@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { supplierSubmissions, suppliers } from "@/db/schema";
 import { audit } from "@/lib/auth/audit";
 import { getRequestMeta, requireVendor } from "@/lib/auth/session";
+import { describeImageUrlProblem } from "@/lib/blob-urls";
 import { nextDocumentNumber } from "@/lib/documents";
 import { findProductByBarcode, searchProducts, type ProductSearchRow } from "@/lib/products/queries";
 import { loadLineProducts, PurchaseError } from "@/lib/purchases/commands";
@@ -20,6 +21,8 @@ export async function submitProductAction(_previous: VendorFormState, formData: 
   const ctx = await requireVendor();
   const parsed = submitProductSchema.safeParse(Object.fromEntries(["name", "sku", "barcode", "description", "unit", "allowFractional", "costPaisa", "suggestedPricePaisa", "taxRateBps", "categoryName", "imageUrl", "imagePathname", "note"].map((k) => [k, formData.get(k)])));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const imageProblem = describeImageUrlProblem(parsed.data.imageUrl);
+  if (imageProblem) return { error: imageProblem };
   const settings = await getSettings();
   const number = await nextDocumentNumber("submission", settings.numbering.submission);
   const d = parsed.data;

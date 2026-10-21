@@ -10,6 +10,7 @@ import { categories, orderItems, products, purchaseItems, stockMovements, suppli
 import { env } from "@/env";
 import { audit } from "@/lib/auth/audit";
 import { getRequestMeta, requireRole } from "@/lib/auth/session";
+import { describeImageUrlProblem } from "@/lib/blob-urls";
 import { isUniqueViolation } from "@/lib/db-errors";
 import { generateEan13 } from "@/lib/products/barcode";
 import { parseProductsCsv, type ParsedImportRow } from "@/lib/products/csv";
@@ -21,17 +22,6 @@ import { firstIssue, uuidSchema } from "@/lib/validation/common";
 import { categoryInputSchema, importRowParsedSchema, productInputSchema, type ImportRow } from "@/lib/validation/products";
 
 const PRODUCTS = "/products";
-const BLOB_HOST = /\.public\.blob\.vercel-storage\.com$/;
-
-function validImageUrl(url: string | undefined): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    return u.protocol === "https:" && BLOB_HOST.test(u.hostname) ? url : null;
-  } catch {
-    return null;
-  }
-}
 
 function scheduleBlobDelete(pathname: string | null | undefined) {
   if (!pathname || !env.blobConfigured) return;
@@ -71,8 +61,9 @@ export async function saveProductAction(_previous: ProductFormState, formData: F
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const input = parsed.data;
-  const imageUrl = validImageUrl(input.imageUrl);
-  if (input.imageUrl && !imageUrl) return { error: "Image URL must point to the configured Blob store." };
+  const imageProblem = describeImageUrlProblem(input.imageUrl);
+  if (imageProblem) return { error: imageProblem };
+  const imageUrl = input.imageUrl ?? null;
   const meta = await getRequestMeta();
 
   const values = {

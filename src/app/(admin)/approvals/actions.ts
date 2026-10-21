@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { categories, products, supplierSubmissions } from "@/db/schema";
 import { audit } from "@/lib/auth/audit";
 import { getRequestMeta, requireRole } from "@/lib/auth/session";
+import { describeImageUrlProblem } from "@/lib/blob-urls";
 import { guarded } from "@/lib/db/guarded";
 import { isGuardFailure, isUniqueViolation } from "@/lib/db-errors";
 import { approveSupplySubmission, PurchaseError } from "@/lib/purchases/commands";
@@ -54,6 +55,8 @@ export async function approveProductSubmissionAction(_previous: ReviewState, for
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const input = parsed.data;
+  const imageProblem = describeImageUrlProblem(input.imageUrl);
+  if (imageProblem) return { error: imageProblem };
   const productId = crypto.randomUUID();
   const meta = await getRequestMeta();
   try {

@@ -40,7 +40,7 @@ All application tables live in the Postgres schema `star_mart`, so the app can s
 | `DATABASE_URL` | yes | Neon Postgres connection string |
 | `AUTH_SECRET` | yes | Auth.js JWT/cookie secret (32+ chars) |
 | `AUTH_URL` | production | Public origin (HTTPS) |
-| `BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY` | no | Vercel Blob store and upload-completion verification settings |
+| `BLOB_STORE_ID`, `BLOB_WEBHOOK_PUBLIC_KEY` | no | Vercel Blob store and upload-completion verification settings. The store must be created with **Public** access (product images are served by URL; a store's access mode cannot be changed after creation) |
 | `BLOB_READ_WRITE_TOKEN` | no | Required for local Blob uploads; deployed Vercel functions can use OIDC when enabled. Product image uploads are disabled unless a write credential is available |
 | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME` | no | Brevo transactional email. Until set, queued mail fails with a clear reason (or is logged when dry run is on) |
 | `BREVO_DRY_RUN` | no | `true` renders and logs emails instead of sending them |
