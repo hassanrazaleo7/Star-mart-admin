@@ -90,11 +90,12 @@ export function AppSidebar({ groups, title, subtitle, home, pendingApprovals = 0
             <SidebarMenuButton
               size="lg"
               className={showBrandLogo ? "h-auto min-h-12 group-data-[collapsible=icon]:size-8" : undefined}
-              render={<Link href={home} data-brand-logo={showBrandLogo ? "" : undefined} />}
+              data-brand-logo={showBrandLogo ? "" : undefined}
+              render={<Link href={home} />}
               tooltip={title}
             >
               {showBrandLogo ? (
-                <span className="flex h-20 w-48 shrink-0 items-center justify-center rounded-lg bg-white p-1.5 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-1">
+                <span className="flex h-20 w-48 shrink-0 items-center justify-center rounded-lg bg-transparent p-1.5 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-1">
                   <Image src="/star-mart-logo.png" alt="Star Mart" width={746} height={301} priority className="h-full w-full object-contain" />
                 </span>
               ) : (
