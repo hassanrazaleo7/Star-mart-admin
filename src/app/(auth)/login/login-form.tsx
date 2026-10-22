@@ -18,7 +18,7 @@ export function LoginForm({ callbackUrl, initialError }: Props) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <form action={formAction} className="grid gap-4" noValidate>
+    <form action={formAction} className="grid gap-5" noValidate>
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
       <div className="grid gap-1.5">
         <Label htmlFor="email" className="text-xs font-medium text-[#29352f]">Email address</Label>
