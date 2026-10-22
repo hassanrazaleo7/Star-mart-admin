@@ -34,26 +34,26 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <div className="pointer-events-none absolute inset-0 bg-black/20" />
       </section>
 
-      <section className="flex min-h-screen items-center justify-center px-6 py-12 sm:px-10 lg:px-14 xl:px-20">
+      <section className="flex min-h-screen items-center justify-center px-6 py-8 sm:px-10 sm:py-10 lg:px-14 xl:px-20">
         <div className="w-full max-w-md">
-          <div className="mb-10">
+          <div className="mb-7">
             <Image
               src="/star-mart-logo.png"
               alt="Star Mart"
               width={746}
               height={301}
               priority
-              className="mb-10 h-auto w-52 object-contain sm:w-60"
+              className="mb-7 h-auto w-40 object-contain sm:w-48"
             />
-            <p className="mb-3 text-sm font-semibold tracking-wide text-[#087443]">ADMIN PORTAL</p>
-            <h1 className="font-heading text-3xl font-semibold tracking-tight text-[#18221e] sm:text-4xl">
+            <p className="mb-2 text-xs font-semibold tracking-wide text-[#087443]">ADMIN PORTAL</p>
+            <h1 className="font-heading text-2xl font-extrabold tracking-tight text-[#fb0101] sm:text-3xl">
               Welcome to Star Mart
             </h1>
-            <p className="mt-3 text-base leading-6 text-[#68736d]">
+            <p className="mt-2 text-sm leading-5 text-[#68736d]">
               Sign in with your administrator account.
             </p>
           </div>
-          <div className="grid gap-5">
+          <div className="grid gap-4">
             {notice ? (
               <Alert>
                 <AlertDescription>{notice}</AlertDescription>
@@ -61,7 +61,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             ) : null}
             <LoginForm callbackUrl={callbackUrl} initialError={initialError} />
           </div>
-          <p className="mt-12 text-center text-xs text-[#89928d]">
+          <p className="mt-8 text-center text-xs text-[#89928d]">
             Secure access for Star Mart team members
           </p>
         </div>

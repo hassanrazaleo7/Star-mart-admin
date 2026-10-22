@@ -18,10 +18,10 @@ export function LoginForm({ callbackUrl, initialError }: Props) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <form action={formAction} className="grid gap-5" noValidate>
+    <form action={formAction} className="grid gap-4" noValidate>
       <input type="hidden" name="callbackUrl" value={callbackUrl} />
-      <div className="grid gap-2">
-        <Label htmlFor="email" className="text-sm font-medium text-[#29352f]">Email address</Label>
+      <div className="grid gap-1.5">
+        <Label htmlFor="email" className="text-xs font-medium text-[#29352f]">Email address</Label>
         <div className="relative">
           <MailIcon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#89928d]" />
           <Input
@@ -34,14 +34,14 @@ export function LoginForm({ callbackUrl, initialError }: Props) {
             maxLength={254}
             defaultValue={state.email ?? ""}
             autoFocus
-            placeholder="you@starmart.com"
-            className="h-12 rounded-xl border-[#dfe4df] bg-white pl-10 text-sm shadow-sm transition focus-visible:border-[#087443] focus-visible:ring-[#087443]/15"
+            placeholder="you@starmartstore.com"
+            className="h-11 rounded-xl border-[#dfe4df] bg-white pl-10 text-sm shadow-sm transition focus-visible:border-[#087443] focus-visible:ring-[#087443]/15"
           />
         </div>
       </div>
-      <div className="grid gap-2">
+      <div className="grid gap-1.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor="password" className="text-sm font-medium text-[#29352f]">Password</Label>
+          <Label htmlFor="password" className="text-xs font-medium text-[#29352f]">Password</Label>
         </div>
         <div className="relative">
           <LockKeyholeIcon aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#89928d]" />
@@ -53,7 +53,7 @@ export function LoginForm({ callbackUrl, initialError }: Props) {
             required
             maxLength={128}
             placeholder="Enter your password"
-            className="h-12 rounded-xl border-[#dfe4df] bg-white pl-10 pr-12 text-sm shadow-sm transition focus-visible:border-[#087443] focus-visible:ring-[#087443]/15"
+            className="h-11 rounded-xl border-[#dfe4df] bg-white pl-10 pr-12 text-sm shadow-sm transition focus-visible:border-[#087443] focus-visible:ring-[#087443]/15"
           />
           <button
             type="button"
@@ -71,7 +71,7 @@ export function LoginForm({ callbackUrl, initialError }: Props) {
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>
       ) : null}
-      <Button type="submit" disabled={pending} className="mt-1 h-12 w-full rounded-xl bg-[#fb0101] text-sm font-semibold shadow-[0_8px_18px_-8px_rgba(251,1,1,0.55)] hover:bg-[#df0000]">
+      <Button type="submit" disabled={pending} className="mt-1 h-11 w-full rounded-xl bg-[#fb0101] text-sm font-semibold shadow-[0_8px_18px_-8px_rgba(251,1,1,0.55)] hover:bg-[#df0000]">
         {pending ? "Signing in…" : "Sign In"}
       </Button>
     </form>
