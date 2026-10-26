@@ -237,6 +237,7 @@ export const products = appSchema.table(
     description: text("description"),
     categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
     brand: text("brand"),
+    expiryDate: date("expiry_date", { mode: "string" }),
     unit: text("unit").notNull().default("pcs"),
     allowFractional: boolean("allow_fractional").notNull().default(false),
     costPaisa: paisa("cost_paisa").notNull().default(0),

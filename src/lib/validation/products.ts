@@ -24,6 +24,12 @@ const percentToBps = z.preprocess(
   z.coerce.number().min(0).max(100).transform((p) => Math.round(p * 100)),
 );
 
+/** Calendar date only: blank means this product has no expiry date. */
+export const expiryDateSchema = z.preprocess(
+  (value) => value == null || (typeof value === "string" && value.trim() === "") ? undefined : value,
+  z.iso.date("Enter a valid expiry date (YYYY-MM-DD)").optional(),
+).transform((value) => value ?? null);
+
 export const productInputSchema = z.object({
   id: optionalUuidSchema,
   sku: skuSchema,
@@ -32,6 +38,7 @@ export const productInputSchema = z.object({
   description: optionalTextSchema(2000),
   categoryId: optionalUuidSchema,
   brand: optionalTextSchema(100),
+  expiryDate: expiryDateSchema,
   unit: unitSchema,
   allowFractional: checkboxSchema,
   costPaisa: moneyInputSchema.refine((p) => p >= 0, "Cost cannot be negative"),
