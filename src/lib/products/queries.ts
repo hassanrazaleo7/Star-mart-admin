@@ -36,6 +36,7 @@ export async function listProducts(params: ProductListParams, scope: { supplierI
         barcode: products.barcode,
         name: products.name,
         unit: products.unit,
+        expiryDate: products.expiryDate,
         pricePaisa: products.pricePaisa,
         costPaisa: products.costPaisa,
         stockQty: products.stockQty,
