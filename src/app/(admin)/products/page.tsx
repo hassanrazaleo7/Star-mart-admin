@@ -74,6 +74,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
+                  <TableHead>Expiry date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -110,6 +111,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         <Badge variant={p.stockQty <= 0 ? "destructive" : low ? "outline" : "secondary"} className={low && p.stockQty > 0 ? "border-destructive text-destructive" : ""}>
                           {formatQty(p.stockQty, p.unit)}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap tabular-nums">
+                        {p.expiryDate ? p.expiryDate.split("-").reverse().join("/") : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge variant={p.status === "active" ? "outline" : "secondary"}>{p.status}</Badge>
