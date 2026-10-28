@@ -288,46 +288,6 @@ Duplicate SKU or barcode → inline error.
 
 Adjustments and stock takes trigger the low-stock email check.
 
-**Batches and expiry.** Every unit in stock belongs to a batch (lot) with an optional expiry date. Sales, write-offs and purchase returns take the earliest expiry first (FEFO). Stock that existed before batch tracking was migrated into one undated `OPENING` batch per product.
-
-- **Adjust, Out:** an optional Batch picker. Empty means earliest expiry first.
-- **Adjust, In:** creates a new batch with an optional lot code and expiry. The expiry is required when the product tracks expiry.
-- **Stock take:** found units become an undated batch. Missing units leave earliest expiry first.
-- **Movements:** each row shows its batch code and expiry.
-
-### 4.4a Expiry `[/stock/expiry]` (managers)
-
-**KPIs:**
-- expired stock still on hand (value at cost, batches, products)
-- expiring soon (within *Settings → Stock → Expiry warning (days)*, or the product's own window)
-- perishable batches without a date
-- value written off in the last 30 days
-
-**Tabs:** Expired, Expiring soon, Missing expiry, All in stock, All batches. Filters: search (product, SKU, barcode, batch code), category, supplier. **Export CSV** downloads the current view.
-
-**Row actions:**
-- **pencil:** edit the lot code and expiry. This re-arms the expiry alert for the batch.
-- **checkboxes + Write off selected:** confirm dialog, then removes the remaining units as `adjustment` / reason `expired` movements at batch cost. The batch shows "Written off".
-
-**Expect:**
-- With *Block sales of expired stock* on (the default), a POS sale or order confirmation that needs expired units fails. The message is "*Product*: only N unexpired in stock (M expired). Write off the expired units on the Expiry page."
-- The POS warns with a toast when an item with expired units is added.
-
-**Product form.** The Expiry card has these fields:
-- *Perishable: track expiry dates*
-- *Shelf life (days)*: pre-fills the expiry when receiving
-- *Warn days before*: overrides the store default
-- on create only: *Opening stock batch* and *Opening stock expiry*
-
-The edit page lists the product's batches (id `#batches`) with the same edit and write-off actions.
-
-**Receiving:**
-- Purchases, and supplier deliveries (now with Batch and Expiry columns in the vendor form), require an expiry for perishable products.
-- A past expiry is rejected unless *Accept lots that are already expired* is ticked. That option is on the purchase form, on **Mark received**, and on the approval form.
-- When the reviewer approves a delivery, they can correct each line's batch and expiry.
-
-**Alerts:** `/api/jobs/email` sends an *Expiry alert* digest to the store email (or super admins). It lists batches that newly expired or newly entered the warning window, and each batch is reported once per stage. Turn it off with *Send expiry alert emails*.
-
 ### 4.5 Suppliers (managers)
 
 **List `[/suppliers]`** (25 per page) — search by name/contact/phone/email; filter Active / Inactive / All; columns include product count and balance.
@@ -561,8 +521,7 @@ Last 200 events: action (e.g. `login.success`, `order.cancelled`, `products.expo
 | `GET /api/pos/products?q=\|barcode=` | staff | 401 |
 | `GET /api/pos/customers?q=` (2+ chars) | staff | 401 |
 | `GET /api/invoices/[id]/pdf?inline=1` | any non-vendor | 404 |
-| `GET /api/reports/[sales\|purchases\|pnl\|expenses\|stock\|expiry]` (`expiry` takes `?view=open\|expired\|soon\|missing\|all`) | managers | 404 |
-| `GET /api/public/products`, `/api/public/products/[idOrSku]`, `/api/public/categories` | `x-api-key: $STOREFRONT_API_KEY` (open in development when unset) | 401 (503 in production when no key is configured) |
+| `GET /api/reports/[sales\|purchases\|pnl\|expenses\|stock]` | managers | 404 |
 | `GET\|POST /api/jobs/email` | cron secret | 401 |
 | `GET /api/session/expire` | public | clears cookie → `/login?reason=expired` |
 

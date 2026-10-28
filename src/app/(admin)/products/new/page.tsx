@@ -17,7 +17,7 @@ export default async function NewProductPage() {
         <h1 className="font-heading text-2xl font-semibold">New product</h1>
         <p className="text-sm text-muted-foreground">Simple product without variations.</p>
       </div>
-      <ProductForm categories={categories} suppliers={suppliers} blobEnabled={env.blobConfigured} defaultTaxBps={settings.tax.defaultRateBps} defaultReorderLevel={settings.stock.defaultReorderLevel} defaultExpiryWarningDays={settings.stock.expiryWarningDays} />
+      <ProductForm categories={categories} suppliers={suppliers} blobEnabled={env.blobConfigured} defaultTaxBps={settings.tax.defaultRateBps} defaultReorderLevel={settings.stock.defaultReorderLevel} />
     </div>
   );
 }

@@ -10,25 +10,13 @@ import { formatLocalDateTime, formatQty } from "@/lib/format";
 import { formatPKR } from "@/lib/money";
 import { stockReport } from "@/lib/reports/stock";
 import type { SearchParams } from "@/lib/search-params";
-import { getSettings } from "@/lib/settings";
-import { storeToday } from "@/lib/stock/batches";
-import { expiryHint } from "@/lib/stock/expiry";
-import { expirySummary, listBatches } from "@/lib/stock/expiry-queries";
 import { reportContext } from "../_shared";
 
 export const metadata: Metadata = { title: "Stock report" };
 
 export default async function StockReportPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { tz } = await reportContext(searchParams);
-  const settings = await getSettings();
-  const today = storeToday(tz);
-  const warningDays = settings.stock.expiryWarningDays;
-  const [r, expiry, expired, soon] = await Promise.all([
-    stockReport(),
-    expirySummary(today, warningDays),
-    listBatches({ view: "expired", today, warningDays, pageSize: 10 }),
-    listBatches({ view: "soon", today, warningDays, pageSize: 10 }),
-  ]);
+  const r = await stockReport();
   return (
     <div className="grid gap-6">
       <div className="flex justify-end"><Button variant="outline" size="sm" nativeButton={false} render={<Link href="/api/reports/stock" prefetch={false} />}><DownloadIcon /> Export CSV</Button></div>
@@ -68,39 +56,6 @@ export default async function StockReportPage({ searchParams }: { searchParams: 
           </Table>
         </CardContent>
       </Card>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-heading text-lg font-semibold">Expiry</h2>
-        <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/api/reports/expiry" prefetch={false} />}><DownloadIcon /> Export batches CSV</Button>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Expired in stock" value={formatPKR(expiry.expiredValuePaisa)} hint={`${expiry.expiredBatches} batches · ${expiry.productsExpired} products`} tone={expiry.expiredBatches ? "negative" : undefined} />
-        <KpiCard label={`Expiring within ${warningDays} days`} value={formatPKR(expiry.soonValuePaisa)} hint={`${expiry.soonBatches} batches · ${expiry.productsSoon} products`} />
-        <KpiCard label={`Written off (${expiry.writtenOffSinceDays} days)`} value={formatPKR(expiry.writtenOffValuePaisa)} hint={`${formatQty(expiry.writtenOffQty)} units`} />
-        <KpiCard label="Perishable batches without a date" value={String(expiry.missingBatches)} tone={expiry.missingBatches ? "negative" : undefined} />
-      </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        {[{ title: "Expired, still in stock", rows: expired, empty: "Nothing expired.", view: "expired" }, { title: "Expiring soon", rows: soon, empty: `Nothing expires within ${warningDays} days.`, view: "soon" }].map((section) => (
-          <Card key={section.view}>
-            <CardHeader><CardTitle>{section.title}</CardTitle><CardDescription>{formatPKR(section.rows.totals.valuePaisa)} at cost · <Link href={`/stock/expiry?view=${section.view}`} className="underline">Manage on the Expiry page</Link></CardDescription></CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Expiry</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Value</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {section.rows.rows.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">{section.empty}</TableCell></TableRow> : null}
-                  {section.rows.rows.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell><Link href={`/products/${b.productId}/edit#batches`} className="font-medium hover:underline">{b.productName}</Link><div className="font-mono text-xs text-muted-foreground">{b.batchCode ?? b.sku}</div></TableCell>
-                      <TableCell>{b.expiry}<div className="text-xs text-muted-foreground">{expiryHint(b.expiry, today)}</div></TableCell>
-                      <TableCell className="text-right">{formatQty(b.qtyRemaining, b.unit)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{formatPKR(Math.round(b.qtyRemaining * b.unitCostPaisa))}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
     </div>
   );
 }

@@ -39,7 +39,6 @@ export const purchaseInputSchema = z.object({
   invoiceRef: optionalTextSchema(80),
   notes: optionalTextSchema(2000),
   receiveNow: checkboxSchema,
-  allowExpired: checkboxSchema,
   lines: linesFromJson,
 });
 
@@ -67,21 +66,6 @@ export const stockAdjustmentSchema = z.object({
   direction: z.enum(["in", "out"]),
   qty: positiveQuantitySchema,
   reason: z.enum(STOCK_ADJUSTMENT_REASONS),
-  note: optionalTextSchema(500),
-  // Out: the batch to take from (empty = earliest expiry first). In: details of the new batch.
-  batchId: optionalUuidSchema,
-  batchCode: optionalTextSchema(60),
-  expiry: z.preprocess((v) => (v === "" || v == null ? undefined : v), isoDateSchema.optional()).transform((v) => v ?? null),
-});
-
-export const batchEditSchema = z.object({
-  batchId: uuidSchema,
-  batchCode: optionalTextSchema(60),
-  expiry: z.preprocess((v) => (v === "" || v == null ? undefined : v), isoDateSchema.optional()).transform((v) => v ?? null),
-});
-
-export const expiryWriteOffSchema = z.object({
-  batchIds: z.array(uuidSchema).min(1, "Select at least one batch").max(500),
   note: optionalTextSchema(500),
 });
 
