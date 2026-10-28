@@ -56,8 +56,9 @@ export const config = {
   matcher: [
     {
       // Everything except Auth.js endpoints, the session-expiry route, the cron job route
-      // (header-authenticated), Next internals and static assets.
-      source: "/((?!api/auth|api/session|api/jobs|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+      // (header-authenticated), the public storefront API (API-key authenticated), Next
+      // internals and static assets.
+      source: "/((?!api/auth|api/session|api/jobs|api/public|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
