@@ -562,7 +562,6 @@ Last 200 events: action (e.g. `login.success`, `order.cancelled`, `products.expo
 | `GET /api/pos/customers?q=` (2+ chars) | staff | 401 |
 | `GET /api/invoices/[id]/pdf?inline=1` | any non-vendor | 404 |
 | `GET /api/reports/[sales\|purchases\|pnl\|expenses\|stock\|expiry]` (`expiry` takes `?view=open\|expired\|soon\|missing\|all`) | managers | 404 |
-| `GET /api/public/products`, `/api/public/products/[idOrSku]`, `/api/public/categories` | `x-api-key: $STOREFRONT_API_KEY` (open in development when unset) | 401 (503 in production when no key is configured) |
 | `GET\|POST /api/jobs/email` | cron secret | 401 |
 | `GET /api/session/expire` | public | clears cookie → `/login?reason=expired` |
 

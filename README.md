@@ -47,8 +47,6 @@ All application tables live in the Postgres schema `star_mart`, so the app can s
 | `BREVO_DRY_RUN` | no | `true` renders and logs emails instead of sending them |
 | `CRON_SECRET` | no | Protects `/api/jobs/email` (`x-cron-secret` header or `Authorization: Bearer`) |
 | `PASSWORD_HIBP_CHECK` | no | `true` rejects passwords found in Have I Been Pwned |
-| `STOREFRONT_API_KEY` | for the storefront | Enables the read-only public API (`/api/public/*`); clients send it as `x-api-key`. Without it the API answers 503 in production (open in development) |
-| `STOREFRONT_ORIGINS` | no | Comma-separated origins allowed to call the public API from a browser (CORS) |
 
 ## Roles
 
@@ -86,7 +84,7 @@ Every received lot is a row in `stock_batches` (lot code, expiry, remaining qty,
 - **Screens:** `/stock/expiry` (expired / expiring soon / missing dates, edit a batch, bulk write-off, CSV), batches on each product's edit page, dashboard card, expiry section in Reports → Stock, POS warning toast.
 - **Migration:** the `0002` migration moves existing stock into one undated `OPENING` batch per product. Date them from the Expiry page ("Missing expiry" tab for perishables).
 
-The customer storefront reads `/api/public/products` (sellable quantity excludes expired units, plus the earliest expiry a customer would receive). [`docs/STOREFRONT-EXPIRY-PROMPT.md`](docs/STOREFRONT-EXPIRY-PROMPT.md) is a hand-off brief for building the storefront side.
+The customer storefront does not call this app. It builds its own API routes that read `star_mart.products`, `stock_batches`, `categories` and `store_settings` read-only from the shared database. [`docs/STOREFRONT-EXPIRY-PROMPT.md`](docs/STOREFRONT-EXPIRY-PROMPT.md) is the hand-off brief: schema, queries, routes and UI.
 
 ## Shifts and closings
 
