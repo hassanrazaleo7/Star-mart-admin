@@ -3,6 +3,7 @@
 import {
   BarChart3Icon,
   BoxesIcon,
+  CalendarClockIcon,
   ClipboardCheckIcon,
   ClipboardListIcon,
   FileTextIcon,
@@ -55,6 +56,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   barcodes: ScanBarcodeIcon,
   shifts: ClockIcon,
   stock: BoxesIcon,
+  expiry: CalendarClockIcon,
   suppliers: TruckIcon,
   purchases: ReceiptTextIcon,
   approvals: ClipboardCheckIcon,

@@ -59,7 +59,7 @@ export default async function MovementsPage({ searchParams }: { searchParams: Pr
                     <TableCell><Badge variant="outline">{m.kind.replace("_", " ")}</Badge>{m.reason ? <span className="ml-1 text-xs text-muted-foreground">{m.reason.replace("_", " ")}</span> : null}</TableCell>
                     <TableCell className={`text-right tabular-nums ${m.qtyDelta < 0 ? "text-destructive" : "text-primary"}`}>{m.qtyDelta > 0 ? "+" : ""}{formatQty(m.qtyDelta, m.unit)}</TableCell>
                     {productId ? <TableCell className="text-right tabular-nums">{m.balance != null ? formatQty(m.balance, m.unit) : "—"}</TableCell> : null}
-                    <TableCell>{link ? <Link href={link} className="hover:underline">{m.refType}</Link> : m.refType ?? "—"}{m.note ? <div className="text-xs text-muted-foreground">{m.note}</div> : null}</TableCell>
+                    <TableCell>{link ? <Link href={link} className="hover:underline">{m.refType}</Link> : m.refType ?? "—"}{m.note ? <div className="text-xs text-muted-foreground">{m.note}</div> : null}{m.batchCode || m.batchExpiry ? <div className="text-xs text-muted-foreground">Batch {m.batchCode ?? "—"}{m.batchExpiry ? ` · exp ${m.batchExpiry}` : ""}</div> : null}</TableCell>
                     <TableCell>{m.actorName ?? "—"}</TableCell>
                   </TableRow>
                 );

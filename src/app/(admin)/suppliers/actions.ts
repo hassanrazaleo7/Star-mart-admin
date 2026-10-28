@@ -11,7 +11,8 @@ import { isGuardFailure, isUniqueViolation } from "@/lib/db-errors";
 import { findProductByBarcode, searchProducts, type ProductSearchRow } from "@/lib/products/queries";
 import { PurchaseError, recordSupplierPayment } from "@/lib/purchases/commands";
 import { ROLE_GROUPS } from "@/lib/rbac";
-import { applyStockMovements } from "@/lib/stock/movements";
+import { getSettings } from "@/lib/settings";
+import { fefoOutflowItems, storeToday } from "@/lib/stock/batches";
 import { firstIssue, uuidSchema } from "@/lib/validation/common";
 import { purchaseReturnSchema, supplierInputSchema, supplierPaymentSchema } from "@/lib/validation/suppliers";
 
@@ -91,10 +92,17 @@ export async function recordPurchaseReturnAction(_previous: FormState, formData:
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const meta = await getRequestMeta();
+  const settings = await getSettings();
+  // Returned units leave earliest expiry first, so expired and short-dated lots go back first.
+  const stock = await fefoOutflowItems(
+    [{ productId: parsed.data.productId, qty: parsed.data.qty, kind: "purchase_return", refType: "purchase_return", refId: parsed.data.purchaseId ?? null, createdBy: ctx.user.id, note: parsed.data.reason }],
+    { today: storeToday(settings.store.timezone), costFromBatch: true },
+    { guardNonNegative: true },
+  );
   try {
     await db.batch([
       db.insert(purchaseReturns).values({ supplierId: parsed.data.supplierId, purchaseId: parsed.data.purchaseId ?? null, productId: parsed.data.productId, qty: parsed.data.qty, amountPaisa: parsed.data.amountPaisa, reason: parsed.data.reason, createdBy: ctx.user.id }),
-      ...applyStockMovements([{ productId: parsed.data.productId, qtyDelta: -parsed.data.qty, kind: "purchase_return", refType: "purchase_return", refId: parsed.data.purchaseId ?? null, createdBy: ctx.user.id, note: parsed.data.reason }], { guardNonNegative: true }),
+      ...stock,
     ]);
   } catch (error) {
     if (isGuardFailure(error)) return { error: "Not enough stock on hand to return that quantity." };

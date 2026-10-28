@@ -1,11 +1,11 @@
 import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, products, suppliers } from "@/db/schema";
+import { categories, products, stockBatches, storeSettings, suppliers } from "@/db/schema";
 import type { ProductListParams } from "@/lib/validation/products";
 
 export const PRODUCTS_PAGE_SIZE = 25;
 
-export async function listProducts(params: ProductListParams, scope: { supplierId?: string } = {}) {
+export async function listProducts(params: ProductListParams, scope: { supplierId?: string; today?: string; warningDays?: number } = {}) {
   const filters: SQL[] = [];
   if (params.status !== "all") filters.push(eq(products.status, params.status));
   if (params.q) {
@@ -16,6 +16,16 @@ export async function listProducts(params: ProductListParams, scope: { supplierI
   if (params.supplier) filters.push(eq(products.supplierId, params.supplier));
   if (scope.supplierId) filters.push(eq(products.supplierId, scope.supplierId));
   if (params.low) filters.push(sql`${products.reorderLevel} > 0 and ${products.stockQty} <= ${products.reorderLevel}`);
+  if (params.expiry) {
+    const today = sql`${scope.today ?? null}::date`;
+    const window = sql`coalesce(${products.expiryWarningDays}, ${scope.warningDays ?? 30})`;
+    const condition = {
+      expired: sql`b.expiry < ${today}`,
+      soon: sql`b.expiry >= ${today} and b.expiry <= ${today} + ${window}`,
+      missing: sql`b.expiry is null and ${products.tracksExpiry}`,
+    }[params.expiry];
+    filters.push(sql`exists (select 1 from ${stockBatches} b where b.product_id = ${products.id} and b.qty_remaining > 0 and ${condition})`);
+  }
   const where = filters.length ? and(...filters) : undefined;
 
   const sortColumn = {
@@ -43,6 +53,9 @@ export async function listProducts(params: ProductListParams, scope: { supplierI
         status: products.status,
         imageUrl: products.imageUrl,
         updatedAt: products.updatedAt,
+        tracksExpiry: products.tracksExpiry,
+        expiryWarningDays: products.expiryWarningDays,
+        nearestExpiry: SEARCH_EXPIRY_COLUMNS.nearestExpiry,
         categoryName: categories.name,
         supplierName: suppliers.name,
       })
@@ -90,6 +103,22 @@ export type ProductSearchRow = {
   costPaisa: number;
   taxRateBps: number;
   stockQty: number;
+  tracksExpiry: boolean;
+  shelfLifeDays: number | null;
+  /** Earliest expiry among open batches (may be in the past). */
+  nearestExpiry: string | null;
+  /** Units in open batches whose expiry is before `today` (store-local, see expiredQtySql). */
+  expiredQty: number;
+};
+
+// Today in the store timezone is resolved in SQL so these lookups need no settings read.
+const storeTodaySql = sql`(now() at time zone coalesce((select value->>'timezone' from ${storeSettings} where key = 'store'), 'Asia/Karachi'))::date`;
+
+const SEARCH_EXPIRY_COLUMNS = {
+  tracksExpiry: products.tracksExpiry,
+  shelfLifeDays: products.shelfLifeDays,
+  nearestExpiry: sql<string | null>`(select min(b.expiry)::text from ${stockBatches} b where b.product_id = ${products.id} and b.qty_remaining > 0)`,
+  expiredQty: sql<number>`coalesce((select sum(b.qty_remaining) from ${stockBatches} b where b.product_id = ${products.id} and b.qty_remaining > 0 and b.expiry < ${storeTodaySql}), 0)`.mapWith(Number),
 };
 
 /** Lightweight product lookup for POS, order and purchase editors. */
@@ -112,6 +141,7 @@ export async function searchProducts(query: string, options: { limit?: number; s
       costPaisa: products.costPaisa,
       taxRateBps: products.taxRateBps,
       stockQty: products.stockQty,
+      ...SEARCH_EXPIRY_COLUMNS,
     })
     .from(products)
     .where(and(...filters))
@@ -132,6 +162,7 @@ export async function findProductByBarcode(code: string): Promise<ProductSearchR
       costPaisa: products.costPaisa,
       taxRateBps: products.taxRateBps,
       stockQty: products.stockQty,
+      ...SEARCH_EXPIRY_COLUMNS,
     })
     .from(products)
     .where(and(eq(products.status, "active"), or(eq(products.barcode, code), eq(products.sku, code.toUpperCase()))))

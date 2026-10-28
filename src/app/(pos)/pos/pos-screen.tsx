@@ -110,6 +110,8 @@ export function PosScreen({ settings, user, canOverridePrices, createSale, initi
 
   const addProduct = useCallback((p: ProductSearchRow) => {
     dispatch({ type: "add", product: p });
+    // Expired units stay on the shelf until written off; remind the cashier to take a fresh one.
+    if (p.expiredQty > 0) toast.warning(`${p.expiredQty} ${p.unit} of ${p.name} in stock is expired. Do not sell those units.`, { id: `expired-${p.id}` });
     setQuery("");
     setResults([]);
   }, []);
@@ -225,7 +227,7 @@ export function PosScreen({ settings, user, canOverridePrices, createSale, initi
                   <li key={r.id} role="option" aria-selected={i === activeResult}>
                     <button type="button" className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-left ${i === activeResult ? "bg-accent" : "hover:bg-accent"}`} onMouseEnter={() => setActiveResult(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => addProduct(r)}>
                       <span className="min-w-0"><span className="block truncate font-medium">{r.name}</span><span className="font-mono text-xs text-muted-foreground">{r.sku}{r.barcode ? ` · ${r.barcode}` : ""}</span></span>
-                      <span className="shrink-0 text-right"><span className="block tabular-nums">{formatPKR(r.pricePaisa)}</span><span className={`block text-xs ${r.stockQty <= 0 ? "text-destructive" : "text-muted-foreground"}`}>{r.stockQty} {r.unit}</span></span>
+                      <span className="shrink-0 text-right"><span className="block tabular-nums">{formatPKR(r.pricePaisa)}</span><span className={`block text-xs ${r.stockQty <= 0 ? "text-destructive" : "text-muted-foreground"}`}>{r.stockQty} {r.unit}</span>{r.expiredQty > 0 ? <span className="block text-xs text-destructive">{r.expiredQty} expired</span> : null}</span>
                     </button>
                   </li>
                 ))}

@@ -70,7 +70,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
           <CardContent className="grid gap-4">
             {payload.note ? <p className="text-sm text-muted-foreground">Supplier note: {payload.note}</p> : null}
             <Table>
-              <TableHeader><TableRow><TableHead>Product</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Unit cost</TableHead><TableHead className="text-right">Line total</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Product</TableHead><TableHead className="text-right">Qty</TableHead><TableHead className="text-right">Unit cost</TableHead><TableHead>Batch / expiry</TableHead><TableHead className="text-right">Line total</TableHead></TableRow></TableHeader>
               <TableBody>
                 {payload.items.map((i, idx) => {
                   const p = names.get(i.productId);
@@ -79,6 +79,7 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
                       <TableCell>{p ? <>{p.name}<div className="font-mono text-xs text-muted-foreground">{p.sku}</div></> : <span className="text-destructive">Unknown product</span>}</TableCell>
                       <TableCell className="text-right">{formatQty(i.qty, p?.unit)}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatPKR(i.unitCostPaisa)}</TableCell>
+                      <TableCell>{[i.batch, i.expiry].filter(Boolean).join(" · ") || "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatPKR(lineTotal(i.unitCostPaisa, i.qty))}</TableCell>
                     </TableRow>
                   );
@@ -86,7 +87,12 @@ export default async function ReviewSubmissionPage({ params }: { params: Promise
               </TableBody>
             </Table>
             {submission.resultPurchaseId ? <Link href={`/purchases/${submission.resultPurchaseId}`} className="text-sm underline">Open created purchase</Link> : null}
-            {pending ? <ApproveSupplyForm submissionId={submission.id} /> : null}
+            {pending ? (
+              <ApproveSupplyForm
+                submissionId={submission.id}
+                lines={payload.items.map((i) => ({ name: names.get(i.productId)?.name ?? "Unknown product", batch: i.batch ?? "", expiry: i.expiry ?? "" }))}
+              />
+            ) : null}
           </CardContent>
         </Card>
       )}

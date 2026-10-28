@@ -53,6 +53,7 @@ export type NavIcon =
   | "customers"
   | "discounts"
   | "products"
+  | "expiry"
   | "categories"
   | "barcodes"
   | "shifts"
@@ -90,6 +91,7 @@ const CATALOGUE: NavGroup = {
     { href: "/products/categories", label: "Categories", icon: "categories" },
     { href: "/products/barcodes", label: "Barcodes", icon: "barcodes" },
     { href: "/stock", label: "Stock", icon: "stock" },
+    { href: "/stock/expiry", label: "Expiry", icon: "expiry" },
   ],
 };
 const SUPPLY: NavGroup = {

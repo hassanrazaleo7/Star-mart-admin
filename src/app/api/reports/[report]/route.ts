@@ -10,6 +10,9 @@ import { parseRange } from "@/lib/reports/range";
 import { salesRows } from "@/lib/reports/sales";
 import { stockRows } from "@/lib/reports/stock";
 import { getSettings } from "@/lib/settings";
+import { storeToday } from "@/lib/stock/batches";
+import { expiryStatus } from "@/lib/stock/expiry";
+import { EXPIRY_VIEWS, listBatches, type ExpiryView } from "@/lib/stock/expiry-queries";
 import { expenseListParamsSchema } from "@/lib/validation/expenses";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +57,33 @@ export async function GET(request: Request, ctx: RouteContext<"/api/reports/[rep
     case "stock": {
       const rows = await stockRows();
       response = csvResponse(`stock_${range.to}.csv`, rows.map((r) => ({ sku: r.sku, name: r.name, barcode: r.barcode ?? "", category: r.category ?? "", supplier: r.supplier ?? "", unit: r.unit, stock_qty: r.stockQty, reorder_level: r.reorderLevel, cost: money(r.costPaisa), price: money(r.pricePaisa), value_at_cost: money(Math.round(r.stockQty * r.costPaisa)) })));
+      break;
+    }
+    case "expiry": {
+      // Open batches by default; ?view=expired|soon|missing|all narrows or widens it.
+      const today = storeToday(tz);
+      const warningDays = settings.stock.expiryWarningDays;
+      const viewParam = sp.get("view") ?? "open";
+      const view: ExpiryView = (EXPIRY_VIEWS as readonly string[]).includes(viewParam) ? (viewParam as ExpiryView) : "open";
+      const { rows } = await listBatches({ view, today, warningDays, pageSize: 20_000 });
+      response = csvResponse(
+        `expiry_${view}_${today}.csv`,
+        rows.map((r) => ({
+          sku: r.sku,
+          product: r.productName,
+          batch: r.batchCode ?? "",
+          expiry: r.expiry ?? "",
+          status: r.qtyRemaining > 0 ? expiryStatus(r.expiry, today, r.expiryWarningDays ?? warningDays) : "empty",
+          supplier: r.supplierName ?? "",
+          purchase: r.purchaseNumber ?? "",
+          source: r.source,
+          unit: r.unit,
+          received_qty: r.receivedQty,
+          remaining_qty: r.qtyRemaining,
+          unit_cost: money(r.unitCostPaisa),
+          value_at_cost: money(Math.round(r.qtyRemaining * r.unitCostPaisa)),
+        })),
+      );
       break;
     }
     default:

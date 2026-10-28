@@ -19,6 +19,9 @@ export const IMPORT_HEADERS = [
   "status",
   "stock_qty",
   "description",
+  "tracks_expiry",
+  "shelf_life_days",
+  "initial_expiry",
 ] as const;
 
 export type ParsedImportRow = { line: number; data?: ImportRow; error?: string; raw: Record<string, string> };
@@ -76,6 +79,8 @@ export type ExportRow = {
   status: string;
   stockQty: number;
   description: string | null;
+  tracksExpiry: boolean;
+  shelfLifeDays: number | null;
 };
 
 export function exportRowsToCsv(rows: ExportRow[], includeHeader: boolean): string {
@@ -96,6 +101,9 @@ export function exportRowsToCsv(rows: ExportRow[], includeHeader: boolean): stri
     status: r.status,
     stock_qty: r.stockQty,
     description: r.description ?? "",
+    tracks_expiry: r.tracksExpiry ? "true" : "false",
+    shelf_life_days: r.shelfLifeDays ?? "",
+    initial_expiry: "",
   }));
   return Papa.unparse(data, { header: includeHeader, columns: [...IMPORT_HEADERS] });
 }
@@ -120,6 +128,9 @@ export function csvTemplate(): string {
         status: "active",
         stock_qty: "0",
         description: "",
+        tracks_expiry: "true",
+        shelf_life_days: "365",
+        initial_expiry: "",
       },
     ],
     { columns: [...IMPORT_HEADERS] },

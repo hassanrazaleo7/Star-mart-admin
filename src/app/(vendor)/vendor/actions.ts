@@ -12,6 +12,7 @@ import { nextDocumentNumber } from "@/lib/documents";
 import { findProductByBarcode, searchProducts, type ProductSearchRow } from "@/lib/products/queries";
 import { loadLineProducts, PurchaseError } from "@/lib/purchases/commands";
 import { getSettings } from "@/lib/settings";
+import { storeToday } from "@/lib/stock/batches";
 import { firstIssue } from "@/lib/validation/common";
 import { submitProductSchema, submitSupplySchema, supplierInputSchema } from "@/lib/validation/suppliers";
 
@@ -48,7 +49,8 @@ export async function submitSupplyAction(_previous: VendorFormState, formData: F
   const parsed = submitSupplySchema.safeParse({ invoiceRef: formData.get("invoiceRef"), note: formData.get("note"), lines: formData.get("lines") });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   try {
-    await loadLineProducts(parsed.data.lines, ctx.supplierId);
+    const settings = await getSettings();
+    await loadLineProducts(parsed.data.lines, ctx.supplierId, { today: storeToday(settings.store.timezone) });
   } catch (error) {
     if (error instanceof PurchaseError) return { error: error.message };
     throw error;
@@ -62,7 +64,7 @@ export async function submitSupplyAction(_previous: VendorFormState, formData: F
       supplierId: ctx.supplierId,
       kind: "supply",
       submittedBy: ctx.user.id,
-      payload: { kind: "supply", invoiceRef: parsed.data.invoiceRef ?? undefined, note: parsed.data.note ?? undefined, items: parsed.data.lines.map((l) => ({ productId: l.productId, qty: l.qty, unitCostPaisa: l.unitCostPaisa })) },
+      payload: { kind: "supply", invoiceRef: parsed.data.invoiceRef ?? undefined, note: parsed.data.note ?? undefined, items: parsed.data.lines.map((l) => ({ productId: l.productId, qty: l.qty, unitCostPaisa: l.unitCostPaisa, batch: l.batch, expiry: l.expiry })) },
     })
     .returning({ id: supplierSubmissions.id });
   const meta = await getRequestMeta();

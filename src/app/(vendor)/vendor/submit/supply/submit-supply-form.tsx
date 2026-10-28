@@ -31,7 +31,7 @@ export function SubmitSupplyForm({ search, lookupBarcode }: Props) {
       </Card>
       <Card>
         <CardHeader><CardTitle>Items delivered</CardTitle></CardHeader>
-        <CardContent><PurchaseLinesEditor search={search} lookupBarcode={lookupBarcode} showBatch={false} /></CardContent>
+        <CardContent><PurchaseLinesEditor search={search} lookupBarcode={lookupBarcode} /></CardContent>
       </Card>
       {state.error ? <Alert variant="destructive"><AlertDescription>{state.error}</AlertDescription></Alert> : null}
       <div className="flex gap-2">
