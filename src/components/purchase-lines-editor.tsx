@@ -10,19 +10,7 @@ import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import type { ProductSearchRow } from "@/lib/products/queries";
 import { formatPKR, lineTotal, paisaToDecimalString, parseMoneyInput } from "@/lib/money";
 
-export type EditorLine = { productId: string; name: string; sku: string; unit: string; allowFractional: boolean; qty: number; unitCostPaisa: number; batch: string; expiry: string; tracksExpiry?: boolean; shelfLifeDays?: number | null };
-
-function localToday(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function suggestedExpiry(shelfLifeDays: number | null | undefined): string {
-  if (!shelfLifeDays) return "";
-  const d = new Date(`${localToday()}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + shelfLifeDays);
-  return d.toISOString().slice(0, 10);
-}
+export type EditorLine = { productId: string; name: string; sku: string; unit: string; allowFractional: boolean; qty: number; unitCostPaisa: number; batch: string; expiry: string };
 
 type Props = {
   search: (query: string) => Promise<ProductSearchRow[]>;
@@ -40,10 +28,7 @@ export function PurchaseLinesEditor({ search, lookupBarcode, name = "lines", sho
     setLines((prev) => {
       const existing = prev.find((l) => l.productId === p.id);
       if (existing) return prev.map((l) => (l.productId === p.id ? { ...l, qty: l.qty + 1 } : l));
-      return [
-        ...prev,
-        { productId: p.id, name: p.name, sku: p.sku, unit: p.unit, allowFractional: p.allowFractional, qty: 1, unitCostPaisa: p.costPaisa, batch: "", expiry: suggestedExpiry(p.shelfLifeDays), tracksExpiry: p.tracksExpiry, shelfLifeDays: p.shelfLifeDays },
-      ];
+      return [...prev, { productId: p.id, name: p.name, sku: p.sku, unit: p.unit, allowFractional: p.allowFractional, qty: 1, unitCostPaisa: p.costPaisa, batch: "", expiry: "" }];
     });
   }
 
@@ -55,7 +40,6 @@ export function PurchaseLinesEditor({ search, lookupBarcode, name = "lines", sho
 
   const update = (i: number, patch: Partial<EditorLine>) => setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   const subtotal = lines.reduce((s, l) => s + lineTotal(l.unitCostPaisa, l.qty), 0);
-  const today = localToday();
   const payload = lines.map((l) => ({ productId: l.productId, qty: l.qty, unitCostPaisa: l.unitCostPaisa, batch: l.batch || undefined, expiry: l.expiry || undefined }));
 
   return (
@@ -87,7 +71,6 @@ export function PurchaseLinesEditor({ search, lookupBarcode, name = "lines", sho
               <TableCell>
                 <div className="font-medium">{l.name}</div>
                 <div className="font-mono text-xs text-muted-foreground">{l.sku}</div>
-                {showBatch && l.tracksExpiry ? <div className="text-xs text-muted-foreground">Tracks expiry{l.shelfLifeDays ? ` · shelf life ${l.shelfLifeDays} d` : ""}</div> : null}
               </TableCell>
               <TableCell>
                 <Input type="number" min={0} step={l.allowFractional ? 0.001 : 1} value={l.qty} onChange={(e) => update(i, { qty: Number(e.target.value) })} data-scanner-ignore />
@@ -102,14 +85,7 @@ export function PurchaseLinesEditor({ search, lookupBarcode, name = "lines", sho
               ) : null}
               {showBatch ? (
                 <TableCell>
-                  <Input
-                    type="date"
-                    value={l.expiry}
-                    onChange={(e) => update(i, { expiry: e.target.value })}
-                    aria-invalid={(l.tracksExpiry && !l.expiry) || (!!l.expiry && l.expiry < today) || undefined}
-                    title={l.tracksExpiry && !l.expiry ? "Expiry is required for this product" : l.expiry && l.expiry < today ? "This date is in the past" : undefined}
-                    data-scanner-ignore
-                  />
+                  <Input type="date" value={l.expiry} onChange={(e) => update(i, { expiry: e.target.value })} data-scanner-ignore />
                 </TableCell>
               ) : null}
               <TableCell className="text-right tabular-nums">{formatPKR(lineTotal(l.unitCostPaisa, l.qty))}</TableCell>

@@ -19,7 +19,6 @@ export async function createPurchaseAction(_previous: PurchaseFormState, formDat
     invoiceRef: formData.get("invoiceRef"),
     notes: formData.get("notes"),
     receiveNow: formData.get("receiveNow"),
-    allowExpired: formData.get("allowExpired"),
     lines: formData.get("lines"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
@@ -44,10 +43,9 @@ export async function receivePurchaseAction(formData: FormData): Promise<void> {
   if (!id.success) redirect("/purchases");
   const meta = await getRequestMeta();
   try {
-    await receivePurchase(id.data, ctx.user.id, { allowExpired: formData.get("allowExpired") === "on" });
+    await receivePurchase(id.data, ctx.user.id);
   } catch (error) {
-    if (error instanceof PurchaseError) redirect(`/purchases/${id.data}?error=${encodeURIComponent(error.message)}`);
-    if (isGuardFailure(error)) redirect(`/purchases/${id.data}?status=purchase_not_draft`);
+    if (isGuardFailure(error) || error instanceof PurchaseError) redirect(`/purchases/${id.data}?status=purchase_not_draft`);
     throw error;
   }
   await audit("purchase.received", { ...meta, actorUserId: ctx.user.id, metadata: { purchaseId: id.data } });

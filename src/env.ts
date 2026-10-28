@@ -26,9 +26,6 @@ const schema = z.object({
   BREVO_SENDER_NAME: optionalString(100),
   BREVO_DRY_RUN: optionalBool(),
   CRON_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
-  // Public storefront API (/api/public/*). Required in production; open in development when unset.
-  STOREFRONT_API_KEY: z.preprocess(emptyToUndefined, z.string().min(24, "STOREFRONT_API_KEY must be at least 24 characters").optional()),
-  STOREFRONT_ORIGINS: optionalString(2000), // comma-separated origins allowed to call it from a browser
 });
 
 const parsed = schema.safeParse(process.env);

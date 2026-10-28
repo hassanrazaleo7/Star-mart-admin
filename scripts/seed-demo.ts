@@ -16,8 +16,7 @@ import { createOrder } from "../src/lib/orders/commands";
 import { generateEan13 } from "../src/lib/products/barcode";
 import { createPurchase } from "../src/lib/purchases/commands";
 import { getSettings } from "../src/lib/settings";
-import { batchInflowItems } from "../src/lib/stock/batches";
-import { addDays } from "../src/lib/stock/expiry";
+import { applyStockMovements } from "../src/lib/stock/movements";
 
 if (process.env.NODE_ENV === "production") {
   console.error("Refusing to seed demo data in production.");
@@ -68,7 +67,7 @@ async function main() {
   log(`${supplierSeed.length} suppliers with vendor logins (password ${VENDOR_PASSWORD})`);
 
   // Products
-  type P = { sku: string; name: string; category: string; supplier: number; unit: string; fractional?: boolean; cost: number; price: number; tax?: number; reorder: number; stock: number; life?: number; exp?: number };
+  type P = { sku: string; name: string; category: string; supplier: number; unit: string; fractional?: boolean; cost: number; price: number; tax?: number; reorder: number; stock: number };
   const productSeed: P[] = [
     { sku: "RICE-5KG", name: "Basmati Rice 5 kg", category: "Grocery", supplier: 0, unit: "pack", cost: 1450, price: 1699, reorder: 10, stock: 40 },
     { sku: "FLOUR-10KG", name: "Chakki Atta 10 kg", category: "Grocery", supplier: 0, unit: "pack", cost: 1100, price: 1290, reorder: 10, stock: 25 },
@@ -76,14 +75,14 @@ async function main() {
     { sku: "LENTIL-RED", name: "Red Lentils 1 kg", category: "Grocery", supplier: 0, unit: "kg", fractional: true, cost: 280, price: 330, reorder: 10, stock: 30 },
     { sku: "OIL-5L", name: "Cooking Oil 5 L", category: "Grocery", supplier: 0, unit: "pcs", cost: 2550, price: 2890, reorder: 5, stock: 18 },
     { sku: "SALT-800", name: "Iodised Salt 800 g", category: "Grocery", supplier: 0, unit: "pcs", cost: 45, price: 60, reorder: 15, stock: 60 },
-    { sku: "MILK-1L", name: "Full Cream Milk 1 L", category: "Dairy", supplier: 1, unit: "pcs", cost: 230, price: 265, reorder: 24, stock: 48, life: 7, exp: 2 },
-    { sku: "YOGURT-500", name: "Yogurt 500 g", category: "Dairy", supplier: 1, unit: "pcs", cost: 150, price: 180, reorder: 12, stock: 30, life: 14, exp: 9 },
-    { sku: "BUTTER-200", name: "Butter 200 g", category: "Dairy", supplier: 1, unit: "pcs", cost: 380, price: 440, reorder: 8, stock: 20, life: 90, exp: 60 },
-    { sku: "CHEESE-200", name: "Cheddar Cheese 200 g", category: "Dairy", supplier: 1, unit: "pcs", cost: 520, price: 599, reorder: 6, stock: 4, life: 120, exp: -3 },
-    { sku: "EGGS-12", name: "Eggs (dozen)", category: "Dairy", supplier: 1, unit: "dozen", cost: 300, price: 345, reorder: 10, stock: 24, life: 21, exp: 12 },
+    { sku: "MILK-1L", name: "Full Cream Milk 1 L", category: "Dairy", supplier: 1, unit: "pcs", cost: 230, price: 265, reorder: 24, stock: 48 },
+    { sku: "YOGURT-500", name: "Yogurt 500 g", category: "Dairy", supplier: 1, unit: "pcs", cost: 150, price: 180, reorder: 12, stock: 30 },
+    { sku: "BUTTER-200", name: "Butter 200 g", category: "Dairy", supplier: 1, unit: "pcs", cost: 380, price: 440, reorder: 8, stock: 20 },
+    { sku: "CHEESE-200", name: "Cheddar Cheese 200 g", category: "Dairy", supplier: 1, unit: "pcs", cost: 520, price: 599, reorder: 6, stock: 4 },
+    { sku: "EGGS-12", name: "Eggs (dozen)", category: "Dairy", supplier: 1, unit: "dozen", cost: 300, price: 345, reorder: 10, stock: 24 },
     { sku: "COLA-1.5L", name: "Cola 1.5 L", category: "Beverages", supplier: 2, unit: "pcs", cost: 150, price: 180, tax: 17, reorder: 24, stock: 72 },
     { sku: "WATER-1.5L", name: "Mineral Water 1.5 L", category: "Beverages", supplier: 2, unit: "pcs", cost: 55, price: 80, reorder: 24, stock: 96 },
-    { sku: "JUICE-1L", name: "Mango Juice 1 L", category: "Beverages", supplier: 2, unit: "pcs", cost: 210, price: 250, tax: 17, reorder: 12, stock: 36, life: 180, exp: 150 },
+    { sku: "JUICE-1L", name: "Mango Juice 1 L", category: "Beverages", supplier: 2, unit: "pcs", cost: 210, price: 250, tax: 17, reorder: 12, stock: 36 },
     { sku: "TEA-950", name: "Black Tea 950 g", category: "Beverages", supplier: 0, unit: "pcs", cost: 1650, price: 1850, reorder: 5, stock: 3 },
     { sku: "SOAP-4PK", name: "Bath Soap 4-pack", category: "Household", supplier: 0, unit: "pack", cost: 390, price: 450, tax: 17, reorder: 10, stock: 28 },
     { sku: "DETERGENT-3KG", name: "Detergent Powder 3 kg", category: "Household", supplier: 0, unit: "pcs", cost: 1150, price: 1299, tax: 17, reorder: 6, stock: 14 },
@@ -102,15 +101,10 @@ async function main() {
     const barcode = await generateEan13(settings.barcode.prefix);
     const [row] = await db
       .insert(products)
-      .values({ sku: p.sku, name: p.name, barcode, categoryId: categoryIds.get(p.category)!, supplierId: supplierIds[p.supplier]!, unit: p.unit, allowFractional: Boolean(p.fractional), costPaisa: p.cost * 100, pricePaisa: p.price * 100, taxRateBps: (p.tax ?? 0) * 100, reorderLevel: p.reorder, reorderQty: p.reorder * 3, status: "active", tracksExpiry: p.life != null, shelfLifeDays: p.life ?? null, createdBy: actor.id })
+      .values({ sku: p.sku, name: p.name, barcode, categoryId: categoryIds.get(p.category)!, supplierId: supplierIds[p.supplier]!, unit: p.unit, allowFractional: Boolean(p.fractional), costPaisa: p.cost * 100, pricePaisa: p.price * 100, taxRateBps: (p.tax ?? 0) * 100, reorderLevel: p.reorder, reorderQty: p.reorder * 3, status: "active", createdBy: actor.id })
       .returning({ id: products.id });
     productIds.set(p.sku, row!.id);
-    // Perishables get a dated opening batch (cheese is already expired, milk expires soon) to populate the Expiry page.
-    const expiry = p.exp != null ? addDays(daysAgo(0).toISOString().slice(0, 10), p.exp) : null;
-    const [first, ...rest] = batchInflowItems(
-      { productId: row!.id, qty: p.stock, source: "initial", batchCode: expiry ? "OPEN-1" : null, expiry, unitCostPaisa: p.cost * 100, supplierId: supplierIds[p.supplier]!, createdBy: actor.id },
-      { kind: "initial", refType: "initial", unitCostPaisa: p.cost * 100, createdBy: actor.id },
-    ).items;
+    const [first, ...rest] = applyStockMovements([{ productId: row!.id, qtyDelta: p.stock, kind: "initial", refType: "initial", unitCostPaisa: p.cost * 100, createdBy: actor.id }]);
     if (first) await db.batch([first, ...rest]);
     created++;
   }
@@ -158,7 +152,7 @@ async function main() {
   const hasDemoPurchase = await db.query.purchases.findFirst({ where: eq(purchases.invoiceRef, "DEMO-1") });
   if (!hasDemoPurchase) {
     await createPurchase({ supplierId: supplierIds[0]!, invoiceRef: "DEMO-1", notes: "Demo seed", receiveNow: true, lines: [{ productId: productIds.get("RICE-5KG")!, qty: 20, unitCostPaisa: 145000, batch: null, expiry: null }, { productId: productIds.get("OIL-5L")!, qty: 10, unitCostPaisa: 255000, batch: null, expiry: null }, { productId: productIds.get("TEA-950")!, qty: 6, unitCostPaisa: 165000, batch: null, expiry: null }] }, actor.id);
-    await createPurchase({ supplierId: supplierIds[1]!, invoiceRef: "DEMO-2", notes: "Demo seed", receiveNow: true, lines: [{ productId: productIds.get("MILK-1L")!, qty: 48, unitCostPaisa: 23000, batch: "B-1021", expiry: daysAgo(-20).toISOString().slice(0, 10) }, { productId: productIds.get("YOGURT-500")!, qty: 24, unitCostPaisa: 15000, batch: "Y-77", expiry: daysAgo(-12).toISOString().slice(0, 10) }] }, actor.id);
+    await createPurchase({ supplierId: supplierIds[1]!, invoiceRef: "DEMO-2", notes: "Demo seed", receiveNow: true, lines: [{ productId: productIds.get("MILK-1L")!, qty: 48, unitCostPaisa: 23000, batch: "B-1021", expiry: daysAgo(-20).toISOString().slice(0, 10) }, { productId: productIds.get("YOGURT-500")!, qty: 24, unitCostPaisa: 15000, batch: null, expiry: null }] }, actor.id);
     log("2 received purchases");
   } else log("purchases already seeded");
 

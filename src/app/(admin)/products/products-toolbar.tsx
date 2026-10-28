@@ -11,7 +11,7 @@ import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 
 type Option = { id: string; name: string };
 type Props = {
-  values: { q?: string; category?: string; supplier?: string; status: string; low?: string; expiry?: string; sort: string; dir: string };
+  values: { q?: string; category?: string; supplier?: string; status: string; low?: string; sort: string; dir: string };
   categories: Option[];
   suppliers: Option[];
   basePath?: string;
@@ -66,12 +66,6 @@ export function ProductsToolbar({ values, categories, suppliers, basePath = "/pr
       <NativeSelect name="dir" defaultValue={values.dir} aria-label="Direction">
         <NativeSelectOption value="asc">Ascending</NativeSelectOption>
         <NativeSelectOption value="desc">Descending</NativeSelectOption>
-      </NativeSelect>
-      <NativeSelect name="expiry" defaultValue={values.expiry ?? ""} aria-label="Expiry">
-        <NativeSelectOption value="">Any expiry</NativeSelectOption>
-        <NativeSelectOption value="expired">Has expired stock</NativeSelectOption>
-        <NativeSelectOption value="soon">Expiring soon</NativeSelectOption>
-        <NativeSelectOption value="missing">Missing expiry date</NativeSelectOption>
       </NativeSelect>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="low" value="1" defaultChecked={values.low === "1"} className="size-4 rounded border" />

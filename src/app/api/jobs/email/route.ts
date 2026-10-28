@@ -1,6 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
 import { env } from "@/env";
-import { checkExpiry } from "@/lib/email/expiry";
 import { checkLowStock } from "@/lib/email/low-stock";
 import { sendPending } from "@/lib/email/worker";
 
@@ -17,13 +16,12 @@ function authorized(request: Request): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** Cron entry point: drains the outbox and runs the low-stock and expiry scans. Needs CRON_SECRET. */
+/** Cron entry point: drains the outbox and runs the low-stock scan. Needs CRON_SECRET. */
 async function run(request: Request) {
   if (!authorized(request)) return new Response("Unauthorized", { status: 401 });
   const lowStock = await checkLowStock();
-  const expiry = await checkExpiry();
   const sent = await sendPending({ limit: 25 });
-  return Response.json({ ok: true, lowStock, expiry, email: sent, at: new Date().toISOString() });
+  return Response.json({ ok: true, lowStock, email: sent, at: new Date().toISOString() });
 }
 
 export const GET = run;
