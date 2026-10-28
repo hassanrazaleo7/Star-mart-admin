@@ -37,6 +37,8 @@ export type AuditAction =
   | "purchase.received"
   | "purchase.cancelled"
   | "stock.adjusted"
+  | "stock.batch_updated"
+  | "stock.expiry_writeoff"
   | "stock.take_committed"
   | "submission.created"
   | "submission.approved"

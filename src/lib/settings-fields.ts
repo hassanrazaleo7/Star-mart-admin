@@ -64,6 +64,10 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
       { name: "defaultReorderLevel", label: "Default reorder level", type: "number", step: 0.001 },
       { name: "allowNegativeStock", label: "Allow sales below zero stock", type: "boolean", help: "Off: a sale fails when there is not enough stock." },
       { name: "lowStockEmails", label: "Send low-stock emails", type: "boolean" },
+      { name: "expiryWarningDays", label: "Expiry warning (days)", type: "number", help: "Batches expiring within this many days count as expiring soon. Products can override it." },
+      { name: "blockExpiredSales", label: "Block sales of expired stock", type: "boolean", help: "On: sales only consume unexpired batches; expired units must be written off." },
+      { name: "expiryEmails", label: "Send expiry alert emails", type: "boolean", help: "Daily digest of batches that are expiring soon or have expired." },
+      { name: "storefrontHideWithinDays", label: "Hide from storefront within (days)", type: "number", help: "Units expiring within this many days are not offered on the online store. 0 = only expired units are hidden." },
     ],
   },
   {

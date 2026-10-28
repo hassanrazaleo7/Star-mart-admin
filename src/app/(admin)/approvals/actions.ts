@@ -110,10 +110,16 @@ export async function approveSupplySubmissionAction(_previous: ReviewState, form
     result = await approveSupplySubmission(
       submission.id,
       submission.supplierId,
-      submission.payload.items.map((i) => ({ productId: i.productId, qty: i.qty, unitCostPaisa: i.unitCostPaisa, batch: null, expiry: null })),
+      submission.payload.items.map((i, idx) => {
+        // The reviewer may correct the supplier's lot details before booking.
+        const batch = formData.has(`batch_${idx}`) ? String(formData.get(`batch_${idx}`) ?? "").trim().slice(0, 60) : (i.batch ?? "");
+        const expiry = formData.has(`expiry_${idx}`) ? String(formData.get(`expiry_${idx}`) ?? "").trim() : (i.expiry ?? "");
+        return { productId: i.productId, qty: i.qty, unitCostPaisa: i.unitCostPaisa, batch: batch || null, expiry: /^\d{4}-\d{2}-\d{2}$/.test(expiry) ? expiry : null };
+      }),
       submission.payload.invoiceRef ?? null,
       ctx.user.id,
       review.data.note,
+      { allowExpired: formData.get("allowExpired") === "on" },
     );
   } catch (error) {
     if (error instanceof PurchaseError) return { error: error.message };

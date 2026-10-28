@@ -249,6 +249,10 @@ export const products = appSchema.table(
     imageUrl: text("image_url"),
     imagePathname: text("image_pathname"),
     status: productStatusEnum("status").notNull().default("active"),
+    // Expiry: perishable products must carry an expiry on every received batch.
+    tracksExpiry: boolean("tracks_expiry").notNull().default(false),
+    shelfLifeDays: integer("shelf_life_days"), // suggests an expiry date when receiving
+    expiryWarningDays: integer("expiry_warning_days"), // overrides settings.stock.expiryWarningDays
     lowStockNotifiedAt: ts("low_stock_notified_at"),
     createdBy: actor("created_by"),
     createdAt: ts("created_at").notNull().defaultNow(),
@@ -290,7 +294,7 @@ export type SubmissionPayload =
       kind: "supply";
       invoiceRef?: string;
       note?: string;
-      items: { productId: string; qty: number; unitCostPaisa: number }[];
+      items: { productId: string; qty: number; unitCostPaisa: number; batch?: string | null; expiry?: string | null }[];
     };
 
 export const supplierSubmissions = appSchema.table(
@@ -421,11 +425,48 @@ export const stockMovements = appSchema.table(
     refId: uuid("ref_id"),
     unitCostPaisa: paisa("unit_cost_paisa"),
     reason: stockAdjustmentReasonEnum("reason"),
+    batchId: uuid("batch_id").references((): AnyPgColumn => stockBatches.id, { onDelete: "set null" }),
     note: text("note"),
     createdBy: actor("created_by"),
     createdAt: ts("created_at").notNull().defaultNow(),
   },
-  (t) => [index("stock_movements_product_created_idx").on(t.productId, t.createdAt), index("stock_movements_ref_idx").on(t.refType, t.refId)],
+  (t) => [
+    index("stock_movements_product_created_idx").on(t.productId, t.createdAt),
+    index("stock_movements_ref_idx").on(t.refType, t.refId),
+    index("stock_movements_batch_idx").on(t.batchId),
+  ],
+);
+
+// One row per received lot. qty_remaining is the cached balance of the movements
+// that carry its batch_id (src/lib/stock/batches.ts); sales consume earliest expiry first.
+export const stockBatches = appSchema.table(
+  "stock_batches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    purchaseItemId: uuid("purchase_item_id").references(() => purchaseItems.id, { onDelete: "set null" }),
+    supplierId: uuid("supplier_id").references(() => suppliers.id, { onDelete: "set null" }),
+    source: text("source").notNull(), // purchase | adjustment | stock_take | sale_return | initial | opening
+    batchCode: text("batch_code"),
+    expiry: date("expiry", { mode: "string" }), // store-local YYYY-MM-DD, null = does not expire
+    receivedQty: qty("received_qty").notNull().default(0),
+    qtyRemaining: qty("qty_remaining").notNull().default(0),
+    unitCostPaisa: paisa("unit_cost_paisa"),
+    soonAlertedAt: ts("soon_alerted_at"),
+    expiredAlertedAt: ts("expired_alerted_at"),
+    writtenOffAt: ts("written_off_at"),
+    createdBy: actor("created_by"),
+    createdAt: ts("created_at").notNull().defaultNow(),
+    updatedAt: ts("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("stock_batches_product_expiry_idx").on(t.productId, t.expiry).where(sql`${t.qtyRemaining} > 0`),
+    index("stock_batches_open_expiry_idx").on(t.expiry).where(sql`${t.qtyRemaining} > 0`),
+    index("stock_batches_purchase_item_idx").on(t.purchaseItemId),
+    check("stock_batches_remaining_nonneg", sql`${t.qtyRemaining} >= 0`),
+  ],
 );
 
 // ---------------------------------------------------------------------------
@@ -738,7 +779,7 @@ export const expenses = appSchema.table(
   ],
 );
 
-export type EmailTemplate = "order_confirmation" | "invoice" | "low_stock" | "supplier_low_stock" | "test_email";
+export type EmailTemplate = "order_confirmation" | "invoice" | "low_stock" | "supplier_low_stock" | "expiry_alert" | "test_email";
 
 export const emailOutbox = appSchema.table(
   "email_outbox",
@@ -790,6 +831,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   category: one(categories, { fields: [products.categoryId], references: [categories.id] }),
   supplier: one(suppliers, { fields: [products.supplierId], references: [suppliers.id] }),
   movements: many(stockMovements),
+  batches: many(stockBatches),
 }));
 
 export const supplierSubmissionsRelations = relations(supplierSubmissions, ({ one }) => ({
@@ -818,8 +860,15 @@ export const purchaseReturnsRelations = relations(purchaseReturns, ({ one }) => 
   product: one(products, { fields: [purchaseReturns.productId], references: [products.id] }),
 }));
 
+export const stockBatchesRelations = relations(stockBatches, ({ one }) => ({
+  product: one(products, { fields: [stockBatches.productId], references: [products.id] }),
+  supplier: one(suppliers, { fields: [stockBatches.supplierId], references: [suppliers.id] }),
+  purchaseItem: one(purchaseItems, { fields: [stockBatches.purchaseItemId], references: [purchaseItems.id] }),
+}));
+
 export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
   product: one(products, { fields: [stockMovements.productId], references: [products.id] }),
+  batch: one(stockBatches, { fields: [stockMovements.batchId], references: [stockBatches.id] }),
   actor: one(adminUsers, { fields: [stockMovements.createdBy], references: [adminUsers.id] }),
 }));
 
@@ -895,6 +944,7 @@ export type SupplierSubmission = typeof supplierSubmissions.$inferSelect;
 export type Purchase = typeof purchases.$inferSelect;
 export type PurchaseItem = typeof purchaseItems.$inferSelect;
 export type StockMovement = typeof stockMovements.$inferSelect;
+export type StockBatch = typeof stockBatches.$inferSelect;
 export type Customer = typeof customers.$inferSelect;
 export type DiscountCode = typeof discountCodes.$inferSelect;
 export type Order = typeof orders.$inferSelect;
