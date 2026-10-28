@@ -1,15 +1,13 @@
 import "server-only";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { products, stockBatches, suppliers, type EmailTemplate } from "@/db/schema";
+import { products, suppliers, type EmailTemplate } from "@/db/schema";
 import { formatDate, formatQty } from "@/lib/format";
 import { loadInvoiceDocument } from "@/lib/invoices/document";
 import { formatPKR } from "@/lib/money";
 import { PAYMENT_METHOD_LABELS } from "@/lib/orders/types";
 import { renderInvoicePdf } from "@/lib/pdf/render";
 import { getSettings } from "@/lib/settings";
-import { storeToday } from "@/lib/stock/batches";
-import { expiryHint, isExpired } from "@/lib/stock/expiry";
 import type { EmailAttachment } from "./brevo";
 
 export type RenderedEmail = { subject: string; html: string; text: string; attachments: EmailAttachment[] };
@@ -76,36 +74,6 @@ async function lowStockEmail(productIds: string[], supplierId: string | null): P
   return { subject: title, html: layout(storeName, title, html, settings.store.address || storeName), text, attachments: [] };
 }
 
-async function expiryAlertEmail(batchIds: string[]): Promise<RenderedEmail | null> {
-  const settings = await getSettings();
-  const ids = batchIds.filter((id) => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 200);
-  if (!ids.length) return null;
-  // Fresh read: batches sold out or written off since the alert was queued are dropped.
-  const list = await db
-    .select({ name: products.name, sku: products.sku, unit: products.unit, batchCode: stockBatches.batchCode, expiry: stockBatches.expiry, qty: stockBatches.qtyRemaining, unitCostPaisa: stockBatches.unitCostPaisa, costPaisa: products.costPaisa, supplierName: suppliers.name })
-    .from(stockBatches)
-    .innerJoin(products, eq(products.id, stockBatches.productId))
-    .leftJoin(suppliers, eq(suppliers.id, stockBatches.supplierId))
-    .where(inArray(stockBatches.id, ids))
-    .orderBy(stockBatches.expiry, products.name);
-  const open = list.filter((b) => b.qty > 0);
-  if (!open.length) return null;
-  const today = storeToday(settings.store.timezone);
-  const storeName = settings.store.name;
-  const expired = open.filter((b) => isExpired(b.expiry, today));
-  const soon = open.filter((b) => !isExpired(b.expiry, today));
-  const value = (rows: typeof open) => rows.reduce((s, b) => s + Math.round(b.qty * (b.unitCostPaisa ?? b.costPaisa)), 0);
-  const section = (heading: string, rows: typeof open, note: string) =>
-    rows.length
-      ? `<h2 style="font-size:16px;margin:16px 0 4px">${esc(heading)} (${rows.length}, ${formatPKR(value(rows))} at cost)</h2><p style="font-size:13px;color:#52525b;margin:0 0 8px">${esc(note)}</p><table ${tableStyle}><tr><th align="left">Product</th><th align="left">Batch</th><th align="left">Expiry</th><th align="right">Qty</th></tr>${rows.map((b) => `<tr>${td(`${esc(b.name)}<br><span style="color:#71717a;font-size:12px">${esc(b.sku)}${b.supplierName ? ` · ${esc(b.supplierName)}` : ""}</span>`)}${td(esc(b.batchCode ?? "—"))}${td(`${esc(b.expiry)}<br><span style="color:#71717a;font-size:12px">${esc(expiryHint(b.expiry, today))}</span>`)}${td(`${formatQty(b.qty)} ${esc(b.unit)}`, true)}</tr>`).join("")}</table>`
-      : "";
-  const title = `Expiry alert: ${[expired.length ? `${expired.length} expired` : "", soon.length ? `${soon.length} expiring soon` : ""].filter(Boolean).join(", ")}`;
-  const html = `${section("Expired", expired, "Remove these from the shelf and write them off on the Expiry page (or return them to the supplier).")}${section("Expiring soon", soon, "Sell these first: consider a promotion or moving them to the front.")}`;
-  const lines = (rows: typeof open) => rows.map((b) => `- ${b.name} (${b.sku}) batch ${b.batchCode ?? "—"}: ${formatQty(b.qty)} ${b.unit}, expiry ${b.expiry} (${expiryHint(b.expiry, today)})`).join("\n");
-  const text = `${title}\n\n${expired.length ? `EXPIRED\n${lines(expired)}\n\n` : ""}${soon.length ? `EXPIRING SOON\n${lines(soon)}\n` : ""}`;
-  return { subject: title, html: layout(storeName, title, html, settings.store.address || storeName), text, attachments: [] };
-}
-
 export async function renderEmail(template: EmailTemplate, payload: Record<string, unknown>): Promise<RenderedEmail | null> {
   switch (template) {
     case "order_confirmation":
@@ -116,8 +84,6 @@ export async function renderEmail(template: EmailTemplate, payload: Record<strin
       return lowStockEmail(Array.isArray(payload.productIds) ? (payload.productIds as string[]) : [], null);
     case "supplier_low_stock":
       return lowStockEmail(Array.isArray(payload.productIds) ? (payload.productIds as string[]) : [], typeof payload.supplierId === "string" ? payload.supplierId : null);
-    case "expiry_alert":
-      return expiryAlertEmail(Array.isArray(payload.batchIds) ? (payload.batchIds as string[]) : []);
     case "test_email": {
       const settings = await getSettings();
       const title = `Test email from ${settings.store.name}`;

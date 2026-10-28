@@ -1,11 +1,7 @@
 import { z } from "zod";
 import { PRODUCT_STATUSES, UNITS } from "@/db/schema";
 import { moneyInputSchema } from "@/lib/money";
-import { checkboxSchema, isoDateSchema, optionalTextSchema, optionalUuidSchema, quantitySchema, uuidSchema } from "./common";
-
-const shelfLifeSchema = z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.number().int().min(1).max(3650).optional()).transform((v) => v ?? null);
-const warningDaysSchema = z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.number().int().min(0).max(365).optional()).transform((v) => v ?? null);
-const optionalDateSchema = z.preprocess((v) => (v === "" || v == null ? undefined : v), isoDateSchema.optional()).transform((v) => v ?? null);
+import { checkboxSchema, optionalTextSchema, optionalUuidSchema, quantitySchema, uuidSchema } from "./common";
 
 export const unitSchema = z.enum(UNITS);
 export const productStatusSchema = z.enum(PRODUCT_STATUSES);
@@ -48,11 +44,6 @@ export const productInputSchema = z.object({
   imagePathname: optionalTextSchema(500),
   status: productStatusSchema,
   initialStock: z.preprocess((v) => (v === "" || v == null ? "0" : v), quantitySchema),
-  tracksExpiry: checkboxSchema,
-  shelfLifeDays: shelfLifeSchema,
-  expiryWarningDays: warningDaysSchema,
-  initialBatchCode: optionalTextSchema(60),
-  initialExpiry: optionalDateSchema,
 });
 export type ProductInput = z.infer<typeof productInputSchema>;
 
@@ -67,7 +58,6 @@ export const productListParamsSchema = z.object({
   supplier: optionalUuidSchema,
   status: z.enum(["active", "draft", "archived", "all"]).default("active"),
   low: z.enum(["1"]).optional(),
-  expiry: z.enum(["expired", "soon", "missing"]).optional(),
   sort: z.enum(["name", "sku", "price", "stock", "updated"]).default("name"),
   dir: z.enum(["asc", "desc"]).default("asc"),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
@@ -92,10 +82,6 @@ export const importRowSchema = z.object({
   status: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim().toLowerCase() : "active"), productStatusSchema),
   stock_qty: z.preprocess((v) => (v === "" || v == null ? "0" : v), quantitySchema),
   description: optionalTextSchema(2000),
-  // Blank = leave unchanged on update (older CSVs have no expiry columns).
-  tracks_expiry: z.preprocess((v) => (String(v ?? "").trim() === "" ? null : ["1", "true", "yes", "y"].includes(String(v).trim().toLowerCase())), z.boolean().nullable()),
-  shelf_life_days: shelfLifeSchema,
-  initial_expiry: optionalDateSchema,
 });
 export type ImportRow = z.infer<typeof importRowSchema>;
 
@@ -119,7 +105,4 @@ export const importRowParsedSchema = z.object({
   status: productStatusSchema,
   stock_qty: z.number().min(0),
   description: z.string().max(2000).nullable(),
-  tracks_expiry: z.boolean().nullable().default(null),
-  shelf_life_days: z.number().int().min(1).max(3650).nullable().default(null),
-  initial_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
 });

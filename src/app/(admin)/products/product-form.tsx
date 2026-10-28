@@ -25,11 +25,9 @@ type Props = {
   blobEnabled: boolean;
   defaultTaxBps: number;
   defaultReorderLevel: number;
-  defaultExpiryWarningDays: number;
 };
 
-export function ProductForm({ product, categories, suppliers, blobEnabled, defaultTaxBps, defaultReorderLevel, defaultExpiryWarningDays }: Props) {
-  const [tracksExpiry, setTracksExpiry] = useState(product?.tracksExpiry ?? false);
+export function ProductForm({ product, categories, suppliers, blobEnabled, defaultTaxBps, defaultReorderLevel }: Props) {
   const [state, formAction, pending] = useActionState<ProductFormState, FormData>(saveProductAction, { error: null });
   const [imageUploading, setImageUploading] = useState(false);
   const isEdit = Boolean(product);
@@ -182,50 +180,6 @@ export function ProductForm({ product, categories, suppliers, blobEnabled, defau
                     ))}
                   </NativeSelect>
                 </Field>
-              </FieldGroup>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Expiry</CardTitle>
-              <CardDescription>Stock is tracked in batches; sales take the earliest expiry first.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FieldGroup>
-                <Field orientation="horizontal">
-                  <Switch id="tracksExpiry" name="tracksExpiry" checked={tracksExpiry} onCheckedChange={(checked) => setTracksExpiry(checked)} />
-                  <div className="grid gap-0.5">
-                    <FieldLabel htmlFor="tracksExpiry">Perishable: track expiry dates</FieldLabel>
-                    <FieldDescription>Every delivery must then carry an expiry date.</FieldDescription>
-                  </div>
-                </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="shelfLifeDays">Shelf life (days)</FieldLabel>
-                    <Input id="shelfLifeDays" name="shelfLifeDays" type="number" min={1} max={3650} step={1} defaultValue={product?.shelfLifeDays ?? ""} placeholder="e.g. 180" />
-                    <FieldDescription>Pre-fills the expiry when receiving.</FieldDescription>
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="expiryWarningDays">Warn days before</FieldLabel>
-                    <Input id="expiryWarningDays" name="expiryWarningDays" type="number" min={0} max={365} step={1} defaultValue={product?.expiryWarningDays ?? ""} placeholder={`Store default (${defaultExpiryWarningDays})`} />
-                  </Field>
-                </div>
-                {!isEdit ? (
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field>
-                      <FieldLabel htmlFor="initialBatchCode">Opening stock batch</FieldLabel>
-                      <Input id="initialBatchCode" name="initialBatchCode" maxLength={60} data-scanner-ignore />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="initialExpiry">Opening stock expiry</FieldLabel>
-                      <Input id="initialExpiry" name="initialExpiry" type="date" required={tracksExpiry} />
-                    </Field>
-                  </div>
-                ) : (
-                  <FieldDescription>
-                    Batches and their expiry dates are listed <a href="#batches" className="underline">below</a>.
-                  </FieldDescription>
-                )}
               </FieldGroup>
             </CardContent>
           </Card>

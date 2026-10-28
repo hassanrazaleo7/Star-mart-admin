@@ -49,8 +49,6 @@ export async function GET(request: Request) {
             status: products.status,
             stockQty: products.stockQty,
             description: products.description,
-            tracksExpiry: products.tracksExpiry,
-            shelfLifeDays: products.shelfLifeDays,
           })
           .from(products)
           .leftJoin(categories, eq(categories.id, products.categoryId))
