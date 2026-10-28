@@ -31,6 +31,7 @@ All application tables live in the Postgres schema `star_mart`, so the app can s
 | `npm run seed:admin` | Create or reset an admin account |
 | `npm run seed:demo` | Idempotent demo data (categories, suppliers + vendor logins, 20 products, customers, purchases, 30 days of sales, expenses) |
 | `npm run check:pricing` | Assertions for the order pricing engine (rounding, discount allocation, points, settlement) |
+| `npm run check:expiry` | Assertions for expiry status and FEFO batch allocation |
 | `npm run db:reset -- --yes` | Drop the `star_mart` and `drizzle` schemas. Requires `DB_RESET_CONFIRM=<database name>`; irreversible |
 
 ## Environment variables
@@ -46,6 +47,8 @@ All application tables live in the Postgres schema `star_mart`, so the app can s
 | `BREVO_DRY_RUN` | no | `true` renders and logs emails instead of sending them |
 | `CRON_SECRET` | no | Protects `/api/jobs/email` (`x-cron-secret` header or `Authorization: Bearer`) |
 | `PASSWORD_HIBP_CHECK` | no | `true` rejects passwords found in Have I Been Pwned |
+| `STOREFRONT_API_KEY` | for the storefront | Enables the read-only public API (`/api/public/*`); clients send it as `x-api-key`. Without it the API answers 503 in production (open in development) |
+| `STOREFRONT_ORIGINS` | no | Comma-separated origins allowed to call the public API from a browser (CORS) |
 
 ## Roles
 
@@ -71,13 +74,27 @@ Customers are records without a login. Vendor accounts are created on the Users 
 - **Guest checkout**: the POS customer panel offers "Guest checkout" next to the account picker. Name, phone and email are optional, are stored on the sale only (no customer record, no points or credit), print on the receipt, and an email address gets the receipt by email.
 - **Receipts and invoices**: the POS prints an 80 mm receipt through a hidden same-origin iframe (`/print/pos/receipt/<id>`); invoices print as A4 (`/print/invoices/<id>`) and download as PDF (`/api/invoices/<id>/pdf`, rendered with `@react-pdf/renderer`).
 
+## Product expiry (batches, FEFO)
+
+Every received lot is a row in `stock_batches` (lot code, expiry, remaining qty, unit cost, supplier, purchase line). The rules:
+
+- **What creates a batch:** purchases, approved supplier deliveries, stock-in adjustments, stock-take surpluses, opening stock and returned sales.
+- **How stock leaves:** sales, write-offs, stock-take shortages and purchase returns take the earliest expiry first (`src/lib/stock/batches.ts`). A cancelled order puts the units back into the batches they were sold from.
+- **Keeping totals in step:** `applyStockMovements` moves `qty_remaining` together with `products.stock_qty` in the same batch. A per-batch guard makes a stale allocation roll the whole write back.
+- **Products:** a product can be marked perishable (`tracks_expiry`, which makes an expiry mandatory on receipt) and given a shelf life that pre-fills it, plus its own warning window.
+- **Settings → Stock:** expiry warning days, block sales of expired stock (default on), daily expiry alert emails, and how many days before expiry units disappear from the storefront.
+- **Screens:** `/stock/expiry` (expired / expiring soon / missing dates, edit a batch, bulk write-off, CSV), batches on each product's edit page, dashboard card, expiry section in Reports → Stock, POS warning toast.
+- **Migration:** the `0002` migration moves existing stock into one undated `OPENING` batch per product. Date them from the Expiry page ("Missing expiry" tab for perishables).
+
+The customer storefront reads `/api/public/products` (sellable quantity excludes expired units, plus the earliest expiry a customer would receive). [`docs/STOREFRONT-EXPIRY-PROMPT.md`](docs/STOREFRONT-EXPIRY-PROMPT.md) is a hand-off brief for building the storefront side.
+
 ## Shifts and closings
 
 Every POS sale belongs to a **shift**: the cashier opens one with the opening float (the POS blocks sales until then), sells, and closes it by counting the drawer. The closing records expected cash (float + cash received − cash refunds), counted cash and the variance, plus totals per payment method. `/shifts` lists closings with filters (cashier, status, date range, variance) and a CSV export; cashiers see only their own shifts. Managers can **reopen** a closed shift to correct a count; the reopen and the new close are audited. `/print/shifts/<id>` prints an A4 closing sheet.
 
 ## Cron
 
-`GET` or `POST /api/jobs/email` drains the outbox and runs the low-stock scan. `vercel.json` schedules it every 5 minutes on Vercel (Vercel sends `Authorization: Bearer $CRON_SECRET`). Elsewhere, call it from any scheduler with the `x-cron-secret` header.
+`GET` or `POST /api/jobs/email` drains the outbox and runs the low-stock and expiry scans. `vercel.json` schedules it every 5 minutes on Vercel (Vercel sends `Authorization: Bearer $CRON_SECRET`). Elsewhere, call it from any scheduler with the `x-cron-secret` header.
 
 ## Security model
 
