@@ -13,9 +13,6 @@ import { formatLocalDateTime, formatQty } from "@/lib/format";
 import { formatPKR } from "@/lib/money";
 import { isManager, ROLE_GROUPS } from "@/lib/rbac";
 import { getSettings } from "@/lib/settings";
-import { storeToday } from "@/lib/stock/batches";
-import { expiryBadgeVariant, expiryHint, expiryStatus } from "@/lib/stock/expiry";
-import { expirySummary, soonestExpiring } from "@/lib/stock/expiry-queries";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -25,9 +22,6 @@ export default async function DashboardPage() {
   const tz = settings.store.timezone;
   const d = await dashboardData(user.role, tz);
   const manager = isManager(user.role);
-  const today = storeToday(tz);
-  const warningDays = settings.stock.expiryWarningDays;
-  const [expiry, expiringList] = manager ? await Promise.all([expirySummary(today, warningDays), soonestExpiring(today, warningDays)]) : [null, []];
 
   return (
     <div className="grid gap-6">
@@ -49,16 +43,8 @@ export default async function DashboardPage() {
         {manager ? <KpiCard label="Pending approvals" value={String(d.pendingApprovals)} hint="Supplier submissions" tone={d.pendingApprovals ? "negative" : undefined} /> : <KpiCard label="Customers" value={String(d.customers.total)} hint={`${d.customers.withPoints} with points`} />}
       </div>
       {manager && d.balances ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-3">
           <KpiCard label="Stock at cost" value={formatPKR(d.stock.valuationPaisa)} />
-          {expiry ? (
-            <KpiCard
-              label="Expired / expiring stock"
-              value={`${expiry.productsExpired} / ${expiry.productsSoon}`}
-              hint={`${formatPKR(expiry.expiredValuePaisa)} expired · ${formatPKR(expiry.soonValuePaisa)} within ${warningDays} days`}
-              tone={expiry.expiredBatches ? "negative" : undefined}
-            />
-          ) : null}
           <KpiCard label="Customers owe" value={formatPKR(d.balances.customerCreditPaisa)} hint={`${d.balances.customersOwing} credit accounts`} />
           <KpiCard label="Owed to suppliers" value={formatPKR(d.balances.supplierPayablesPaisa)} tone={d.balances.supplierPayablesPaisa ? "negative" : undefined} />
         </div>
@@ -76,23 +62,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      {manager ? (
-        <Card>
-          <CardHeader><CardTitle>Expiring soon</CardTitle><CardDescription>Earliest-dated batches still in stock · <Link href="/stock/expiry" className="underline">Expiry page</Link></CardDescription></CardHeader>
-          <CardContent className="grid gap-2 text-sm sm:grid-cols-2">
-            {expiringList.length === 0 ? <p className="text-muted-foreground">Nothing expires within {warningDays} days.</p> : null}
-            {expiringList.map((b) => {
-              const status = expiryStatus(b.expiry, today, b.expiryWarningDays ?? warningDays);
-              return (
-                <div key={b.id} className="flex items-center justify-between gap-2">
-                  <Link href={`/products/${b.productId}/edit#batches`} className="truncate hover:underline">{b.productName} <span className="text-muted-foreground">· {formatQty(b.qtyRemaining, b.unit)}</span></Link>
-                  <Badge variant={expiryBadgeVariant(status)}>{expiryHint(b.expiry, today)}</Badge>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-      ) : null}
       <Card>
         <CardHeader><CardTitle>Recent orders</CardTitle><CardDescription><Link href="/orders" className="underline">All orders</Link></CardDescription></CardHeader>
         <CardContent>

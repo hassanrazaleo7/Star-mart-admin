@@ -31,10 +31,6 @@ export const settingsSchemas = {
     defaultReorderLevel: z.number().min(0).max(1_000_000).default(5),
     allowNegativeStock: z.boolean().default(false),
     lowStockEmails: z.boolean().default(true),
-    expiryWarningDays: z.number().int().min(0).max(365).default(30),
-    blockExpiredSales: z.boolean().default(true),
-    expiryEmails: z.boolean().default(true),
-    storefrontHideWithinDays: z.number().int().min(0).max(365).default(0),
   }),
   delivery: z.object({
     feePaisa: z.number().int().min(0).max(100_000_000).default(0),

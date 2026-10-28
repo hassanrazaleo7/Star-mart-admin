@@ -29,8 +29,6 @@ const MESSAGES: Record<string, { kind: "success" | "info" | "error"; text: strin
   purchase_not_draft: { kind: "error", text: "Only draft purchases can be received or cancelled." },
   stock_adjusted: { kind: "success", text: "Stock adjusted." },
   stock_take_done: { kind: "success", text: "Stock take committed." },
-  batch_saved: { kind: "success", text: "Batch updated." },
-  batches_written_off: { kind: "success", text: "Expired stock written off." },
   submission_created: { kind: "success", text: "Submitted to the store for approval." },
   submission_approved: { kind: "success", text: "Submission approved." },
   submission_rejected: { kind: "success", text: "Submission rejected." },

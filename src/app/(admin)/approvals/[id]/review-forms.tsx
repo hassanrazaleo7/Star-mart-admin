@@ -54,22 +54,11 @@ export function ApproveProductForm({ submissionId, payload, categories, defaultR
   );
 }
 
-export function ApproveSupplyForm({ submissionId, lines }: { submissionId: string; lines: { name: string; batch: string; expiry: string }[] }) {
+export function ApproveSupplyForm({ submissionId }: { submissionId: string }) {
   const [state, formAction, pending] = useActionState<ReviewState, FormData>(approveSupplySubmissionAction, { error: null });
   return (
     <form action={formAction} className="grid gap-3">
       <input type="hidden" name="submissionId" value={submissionId} />
-      <div className="grid gap-2 rounded-lg border p-3">
-        <div className="text-sm font-medium">Batch and expiry to book</div>
-        {lines.map((l, idx) => (
-          <div key={idx} className="grid items-center gap-2 sm:grid-cols-[1fr_8rem_10rem]">
-            <span className="truncate text-sm">{l.name}</span>
-            <Input name={`batch_${idx}`} defaultValue={l.batch} placeholder="Batch" maxLength={60} aria-label={`Batch for ${l.name}`} data-scanner-ignore />
-            <Input name={`expiry_${idx}`} type="date" defaultValue={l.expiry} aria-label={`Expiry for ${l.name}`} data-scanner-ignore />
-          </div>
-        ))}
-        <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="checkbox" name="allowExpired" /> Accept lots that are already expired</label>
-      </div>
       <Field><FieldLabel htmlFor="supply-note">Review note (visible to the supplier)</FieldLabel><Input id="supply-note" name="note" maxLength={500} data-scanner-ignore /></Field>
       {state.error ? <Alert variant="destructive"><AlertDescription>{state.error}</AlertDescription></Alert> : null}
       <div><Button type="submit" disabled={pending}>{pending ? "Approving…" : "Approve and receive stock"}</Button></div>

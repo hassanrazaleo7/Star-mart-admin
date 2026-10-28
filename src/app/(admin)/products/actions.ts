@@ -17,7 +17,7 @@ import { parseProductsCsv, type ParsedImportRow } from "@/lib/products/csv";
 import { searchProducts, type ProductSearchRow } from "@/lib/products/queries";
 import { ROLE_GROUPS } from "@/lib/rbac";
 import { getSettings } from "@/lib/settings";
-import { batchInflowItems } from "@/lib/stock/batches";
+import { applyStockMovements } from "@/lib/stock/movements";
 import { firstIssue, uuidSchema } from "@/lib/validation/common";
 import { categoryInputSchema, importRowParsedSchema, productInputSchema, type ImportRow } from "@/lib/validation/products";
 
@@ -58,11 +58,6 @@ export async function saveProductAction(_previous: ProductFormState, formData: F
     imagePathname: formData.get("imagePathname"),
     status: formData.get("status"),
     initialStock: formData.get("initialStock"),
-    tracksExpiry: formData.get("tracksExpiry"),
-    shelfLifeDays: formData.get("shelfLifeDays"),
-    expiryWarningDays: formData.get("expiryWarningDays"),
-    initialBatchCode: formData.get("initialBatchCode"),
-    initialExpiry: formData.get("initialExpiry"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const input = parsed.data;
@@ -89,9 +84,6 @@ export async function saveProductAction(_previous: ProductFormState, formData: F
     imageUrl,
     imagePathname: imageUrl ? input.imagePathname : null,
     status: input.status,
-    tracksExpiry: input.tracksExpiry,
-    shelfLifeDays: input.shelfLifeDays,
-    expiryWarningDays: input.expiryWarningDays,
   };
 
   try {
@@ -105,13 +97,9 @@ export async function saveProductAction(_previous: ProductFormState, formData: F
       redirect(`${PRODUCTS}?status=product_updated`);
     }
 
-    if (input.initialStock > 0 && input.tracksExpiry && !input.initialExpiry) return { error: "Enter the expiry date of the opening stock, or turn off expiry tracking." };
     const id = crypto.randomUUID();
     const movements = input.initialStock > 0
-      ? batchInflowItems(
-          { productId: id, qty: input.initialStock, source: "initial", batchCode: input.initialBatchCode, expiry: input.initialExpiry, unitCostPaisa: input.costPaisa, supplierId: input.supplierId ?? null, createdBy: ctx.user.id },
-          { kind: "initial", refType: "initial", refId: id, unitCostPaisa: input.costPaisa, createdBy: ctx.user.id },
-        ).items
+      ? applyStockMovements([{ productId: id, qtyDelta: input.initialStock, kind: "initial", refType: "initial", refId: id, unitCostPaisa: input.costPaisa, createdBy: ctx.user.id }])
       : [];
     await db.batch([db.insert(products).values({ id, ...values, createdBy: ctx.user.id }), ...movements]);
     await audit("product.created", { ...meta, actorUserId: ctx.user.id, metadata: { productId: id, sku: input.sku, initialStock: input.initialStock } });
@@ -310,8 +298,6 @@ export async function importProductsAction(previous: ImportState, formData: Form
         reorderQty: data.reorder_qty,
         supplierId: data.supplier ? (supplierByName.get(data.supplier.toLowerCase()) ?? null) : null,
         status: data.status,
-        ...(data.tracks_expiry == null ? {} : { tracksExpiry: data.tracks_expiry }),
-        ...(data.shelf_life_days == null ? {} : { shelfLifeDays: data.shelf_life_days }),
       };
       const existingId = existingBySku.get(data.sku);
       if (existingId) {
@@ -323,10 +309,7 @@ export async function importProductsAction(previous: ImportState, formData: Form
       return [
         db.insert(products).values({ id, sku: data.sku, ...base, createdBy: ctx.user.id }),
         ...(data.stock_qty > 0
-          ? batchInflowItems(
-              { productId: id, qty: data.stock_qty, source: "initial", expiry: data.initial_expiry, unitCostPaisa: data.cost, supplierId: base.supplierId, createdBy: ctx.user.id },
-              { kind: "initial", refType: "initial", refId: id, unitCostPaisa: data.cost, createdBy: ctx.user.id },
-            ).items
+          ? applyStockMovements([{ productId: id, qtyDelta: data.stock_qty, kind: "initial", refType: "initial", refId: id, unitCostPaisa: data.cost, createdBy: ctx.user.id }])
           : []),
       ];
     });

@@ -55,13 +55,6 @@ export function PurchaseForm({ suppliers, defaultSupplierId, search, lookupBarco
                 <FieldDescription>Books the stock immediately and updates product costs. Untick to save as a draft order.</FieldDescription>
               </div>
             </Field>
-            <Field orientation="horizontal">
-              <Switch id="allowExpired" name="allowExpired" />
-              <div className="grid gap-0.5">
-                <FieldLabel htmlFor="allowExpired">Accept lots that are already expired</FieldLabel>
-                <FieldDescription>Off: an expiry date in the past is rejected. Turn on only to book stock you will write off or return.</FieldDescription>
-              </div>
-            </Field>
           </FieldGroup>
         </CardContent>
       </Card>

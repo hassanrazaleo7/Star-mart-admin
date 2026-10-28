@@ -21,7 +21,7 @@ import { evaluateDiscount } from "@/lib/discounts/rules";
 import { nextDocumentNumber } from "@/lib/documents";
 import { buildEmailInsert } from "@/lib/email/outbox";
 import { getSettings, type Settings } from "@/lib/settings";
-import { fefoOutflowItems, orderReturnItems, StockAllocationError, storeToday } from "@/lib/stock/batches";
+import { applyStockMovements } from "@/lib/stock/movements";
 import { paymentStatusFor, priceCart, settlePayments, type PricedCart } from "./pricing";
 import { ORDER_TRANSITIONS, type CartLine, type PaymentInput } from "./types";
 import type { OrderLineInput } from "./validation";
@@ -171,24 +171,16 @@ function paymentItems(orderId: string, customerId: string | null, p: { method: P
   ];
 }
 
-/** Deducts a sale from stock, earliest-expiring batches first. */
-async function saleStockItems(orderId: string, cart: PricedCart, settings: Settings, actorId: string): Promise<BatchItem<"pg">[]> {
-  try {
-    return await fefoOutflowItems(
-      cart.lines.map((l) => ({ productId: l.productId, qty: l.qty, kind: "sale" as const, refType: "order", refId: orderId, unitCostPaisa: l.costPaisa, createdBy: actorId })),
-      { today: storeToday(settings.store.timezone), excludeExpired: settings.stock.blockExpiredSales, allowShortfall: settings.stock.allowNegativeStock },
-      { guardNonNegative: !settings.stock.allowNegativeStock },
-    );
-  } catch (error) {
-    if (error instanceof StockAllocationError) throw new OrderError(error.message);
-    throw error;
-  }
+function stockItems(orderId: string, cart: PricedCart, settings: Settings, actorId: string, direction: 1 | -1) {
+  return applyStockMovements(
+    cart.lines.map((l) => ({ productId: l.productId, qtyDelta: direction * -l.qty, kind: direction === 1 ? "sale" : "sale_return", refType: "order", refId: orderId, unitCostPaisa: l.costPaisa, createdBy: actorId })),
+    { guardNonNegative: direction === 1 && !settings.stock.allowNegativeStock },
+  );
 }
 
 function explainGuard(error: unknown, cart: PricedCart, fallback: string): never {
   if (!isGuardFailure(error)) throw error;
   const message = (error as { message?: string })?.message ?? "";
-  if (/stock_batches/.test(message)) throw new OrderError("Stock changed while saving (another sale took the same batch). Please try again.");
   if (/stock_movements|stock_qty/.test(message)) {
     const short = cart.lines.find((l) => l.stockQty < l.qty);
     throw new OrderError(short ? `Only ${short.stockQty} ${short.unit} of ${short.name} left in stock.` : "Not enough stock for one of the lines.");
@@ -285,7 +277,7 @@ export async function createOrder(input: CreateOrderInput, actor: Actor): Promis
   if (customer && cart.pointsRedeemed > 0) items.push(...redeemPointsItems(customer.id, cart.pointsRedeemed, orderId, actor.id));
   for (const p of settled.applied) items.push(...paymentItems(orderId, customer?.id ?? null, p, actor.id));
   if (isPos) {
-    items.push(...(await saleStockItems(orderId, cart, settings, actor.id)));
+    items.push(...stockItems(orderId, cart, settings, actor.id, 1));
     if (customer && cart.pointsEarned > 0) items.push(...earnPointsItems(customer.id, cart.pointsEarned, orderId, actor.id));
     items.push(db.insert(invoices).values({ number: invoiceNumber!, orderId, status: "paid", paidAt: sql`now()` }));
     if (customerEmail) items.push(buildEmailInsert({ toEmail: customerEmail, toName: customerDisplayName, subject: `Receipt ${number} from ${settings.store.name}`, template: "invoice", payload: { orderId }, createdBy: actor.id }));
@@ -356,7 +348,7 @@ export async function transitionOrder(orderId: string, to: OrderStatus, actor: A
   if (to === "confirmed") {
     const needsStock = !order.stockDeductedAt;
     items.push(transitionItems(orderId, from, to, actor.id, note, needsStock ? sql`, stock_deducted_at = now()` : sql``));
-    if (needsStock) items.push(...(await saleStockItems(orderId, cart, settings, actor.id)));
+    if (needsStock) items.push(...stockItems(orderId, cart, settings, actor.id, 1));
     if (!order.invoice) {
       invoiceNumber = await nextDocumentNumber("invoice", settings.numbering.invoice);
       const paid = order.paymentStatus === "paid";
@@ -366,7 +358,7 @@ export async function transitionOrder(orderId: string, to: OrderStatus, actor: A
   } else if (to === "completed") {
     items.push(transitionItems(orderId, from, to, actor.id, note, sql`, completed_at = now()`, sql`and ${orders.paymentStatus} = 'paid'`));
     if (!order.stockDeductedAt) {
-      items.push(db.update(orders).set({ stockDeductedAt: sql`now()` }).where(eq(orders.id, orderId)), ...(await saleStockItems(orderId, cart, settings, actor.id)));
+      items.push(db.update(orders).set({ stockDeductedAt: sql`now()` }).where(eq(orders.id, orderId)), ...stockItems(orderId, cart, settings, actor.id, 1));
     }
     if (order.customerId && order.pointsEarned > 0) items.push(...earnPointsItems(order.customerId, order.pointsEarned, orderId, actor.id));
     if (order.invoice) items.push(db.update(invoices).set({ status: "paid", paidAt: sql`coalesce(${invoices.paidAt}, now())` }).where(eq(invoices.orderId, orderId)));
@@ -393,6 +385,8 @@ export async function cancelOrder(orderId: string, reason: string, refundMethod:
   if (from === "cancelled") throw new OrderError("This order is already cancelled.");
   if (actor.role === "cashier" && from !== "pending") throw new OrderError("Cashiers can only cancel pending orders. Ask a manager.");
 
+  const settings = await getSettings();
+  const cart = cartFromOrder(order);
   const livePayments = order.payments.filter((p) => p.amountPaisa > 0);
   const refunds = order.payments.reduce((s, p) => s + (p.amountPaisa < 0 ? -p.amountPaisa : 0), 0);
   const refundable = livePayments.reduce((s, p) => s + p.amountPaisa, 0) - refunds;
@@ -401,8 +395,7 @@ export async function cancelOrder(orderId: string, reason: string, refundMethod:
   const items: BatchItem<"pg">[] = [
     transitionItems(orderId, from, "cancelled", actor.id, reason, sql`, cancelled_at = now(), paid_paisa = 0, payment_status = ${refundable > 0 ? "refunded" : "unpaid"}::star_mart.pay_status`),
   ];
-  // Units go back to the batches they were sold from (per the order's own movements).
-  if (order.stockDeductedAt) items.push(...(await orderReturnItems(orderId, actor.id)));
+  if (order.stockDeductedAt) items.push(...stockItems(orderId, cart, settings, actor.id, -1));
   if (order.customerId) {
     if (order.pointsRedeemed > 0) items.push(db.insert(loyaltyTransactions).values({ customerId: order.customerId, pointsDelta: order.pointsRedeemed, kind: "reverse", orderId, note: "Order cancelled", createdBy: actor.id }), db.update(customers).set({ pointsBalance: sql`${customers.pointsBalance} + ${order.pointsRedeemed}`, updatedAt: sql`now()` }).where(eq(customers.id, order.customerId)));
     if (from === "completed" && order.pointsEarned > 0) {
