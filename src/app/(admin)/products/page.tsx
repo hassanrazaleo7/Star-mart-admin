@@ -14,8 +14,6 @@ import { formatPKR } from "@/lib/money";
 import { listCategories, listProducts, listSupplierOptions, PRODUCTS_PAGE_SIZE } from "@/lib/products/queries";
 import { isManager, ROLE_GROUPS } from "@/lib/rbac";
 import { getSettings } from "@/lib/settings";
-import { storeToday } from "@/lib/stock/batches";
-import { expiryBadgeVariant, expiryStatus } from "@/lib/stock/expiry";
 import { firstParam, type SearchParams } from "@/lib/search-params";
 import { productListParamsSchema } from "@/lib/validation/products";
 import { ProductRowActions } from "./product-row-actions";
@@ -29,11 +27,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const canManage = isManager(user.role);
   const parsed = productListParamsSchema.safeParse(Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, firstParam(v)])));
   const params = parsed.success ? parsed.data : productListParamsSchema.parse({});
-  const settings = await getSettings();
-  const today = storeToday(settings.store.timezone);
-  const [result, categories, suppliers] = await Promise.all([listProducts(params, { today, warningDays: settings.stock.expiryWarningDays }), listCategories(), listSupplierOptions()]);
+  const [result, categories, suppliers, settings] = await Promise.all([listProducts(params), listCategories(), listSupplierOptions(), getSettings()]);
   const symbol = settings.currency.symbol;
-  const preserved = { q: params.q, category: params.category, supplier: params.supplier, status: params.status, low: params.low, expiry: params.expiry, sort: params.sort, dir: params.dir };
+  const preserved = { q: params.q, category: params.category, supplier: params.supplier, status: params.status, low: params.low, sort: params.sort, dir: params.dir };
 
   return (
     <div className="grid gap-6">
@@ -114,14 +110,6 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         <Badge variant={p.stockQty <= 0 ? "destructive" : low ? "outline" : "secondary"} className={low && p.stockQty > 0 ? "border-destructive text-destructive" : ""}>
                           {formatQty(p.stockQty, p.unit)}
                         </Badge>
-                        {(() => {
-                          const status = expiryStatus(p.nearestExpiry, today, p.expiryWarningDays ?? settings.stock.expiryWarningDays);
-                          return status === "expired" || status === "expiring_soon" ? (
-                            <div className="mt-1">
-                              <Badge variant={expiryBadgeVariant(status)} title={`Earliest batch expires ${p.nearestExpiry}`}>{status === "expired" ? "Expired stock" : `Exp ${p.nearestExpiry}`}</Badge>
-                            </div>
-                          ) : null;
-                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={p.status === "active" ? "outline" : "secondary"}>{p.status}</Badge>

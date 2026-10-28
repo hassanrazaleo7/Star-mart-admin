@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, gte, ilike, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { adminUsers, categories, products, stockBatches, stockMovements, suppliers } from "@/db/schema";
+import { adminUsers, categories, products, stockMovements, suppliers } from "@/db/schema";
 
 export const STOCK_PAGE_SIZE = 50;
 
@@ -81,12 +81,9 @@ export async function listMovements(params: { product?: string; kind?: string; f
         sku: products.sku,
         unit: products.unit,
         actorName: adminUsers.name,
-        batchCode: stockBatches.batchCode,
-        batchExpiry: stockBatches.expiry,
       })
       .from(stockMovements)
       .innerJoin(products, eq(products.id, stockMovements.productId))
-      .leftJoin(stockBatches, eq(stockBatches.id, stockMovements.batchId))
       .leftJoin(adminUsers, eq(adminUsers.id, stockMovements.createdBy))
       .where(where)
       .orderBy(desc(stockMovements.createdAt), desc(stockMovements.id))
@@ -115,7 +112,7 @@ export async function listMovements(params: { product?: string; kind?: string; f
 
 export async function productBrief(id: string) {
   const [row] = await db
-    .select({ id: products.id, name: products.name, sku: products.sku, unit: products.unit, stockQty: products.stockQty, costPaisa: products.costPaisa, allowFractional: products.allowFractional, tracksExpiry: products.tracksExpiry, shelfLifeDays: products.shelfLifeDays })
+    .select({ id: products.id, name: products.name, sku: products.sku, unit: products.unit, stockQty: products.stockQty, costPaisa: products.costPaisa, allowFractional: products.allowFractional })
     .from(products)
     .where(eq(products.id, id))
     .limit(1);

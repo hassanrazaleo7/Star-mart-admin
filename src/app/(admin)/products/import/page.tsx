@@ -18,11 +18,11 @@ export default async function ImportPage() {
         <CardHeader>
           <CardTitle>CSV file</CardTitle>
           <CardDescription>
-            Columns: sku, name, barcode, category, brand, unit, allow_fractional, cost, price, tax_rate_percent, reorder_level, reorder_qty, supplier, status, stock_qty, description, tracks_expiry, shelf_life_days, initial_expiry.{" "}
+            Columns: sku, name, barcode, category, brand, unit, allow_fractional, cost, price, tax_rate_percent, reorder_level, reorder_qty, supplier, status, stock_qty, description.{" "}
             <a href="/api/products/export?template=1" className="underline">
               Download template
             </a>
-            . Opening stock (stock_qty) is only applied to new products, as one batch expiring on initial_expiry (YYYY-MM-DD). Leave tracks_expiry or shelf_life_days blank to keep the current value of an existing product.
+            . Opening stock (stock_qty) is only applied to new products.
           </CardDescription>
         </CardHeader>
         <CardContent>
