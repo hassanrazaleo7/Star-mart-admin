@@ -1,0 +1,1 @@
+ALTER TABLE "star_mart"."products" ADD COLUMN "expiry_date" date;

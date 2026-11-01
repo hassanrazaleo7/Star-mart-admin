@@ -133,6 +133,11 @@ export function ProductForm({ product, categories, suppliers, blobEnabled, defau
                     ))}
                   </NativeSelect>
                 </Field>
+                <Field>
+                  <FieldLabel htmlFor="expiryDate">Expiry date</FieldLabel>
+                  <Input id="expiryDate" name="expiryDate" type="date" defaultValue={product?.expiryDate ?? ""} aria-describedby="expiryDate-help" data-scanner-ignore />
+                  <FieldDescription id="expiryDate-help">Select the date printed on the packaging. Leave blank for products without an expiry date.</FieldDescription>
+                </Field>
                 <Field orientation="horizontal">
                   <Switch id="allowFractional" name="allowFractional" defaultChecked={product?.allowFractional ?? false} />
                   <div className="grid gap-0.5">
