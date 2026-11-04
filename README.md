@@ -1,6 +1,6 @@
 # Star Mart Admin
 
-Back-office and point of sale for Star Mart, built with Next.js 16 (App Router, TypeScript), Auth.js v5, Drizzle ORM on Neon Postgres, and shadcn/ui.
+Back-office and point of sale for Star Mart, built with Next.js 16 (App Router, TypeScript), Auth.js v5, Drizzle ORM on Neon Postgres, and shadcn/ui. Product records include shelf numbers and an optional product expiry date; product and received purchase batch dates in the next 30 days trigger an admin reminder.
 
 Modules: products and categories (barcodes, labels, CSV import/export), suppliers and purchases with a supplier (vendor) portal and approval queue, stock (adjustments, stock takes, movement ledger), customers with loyalty points and credit accounts, discount codes, orders and invoices (pickup/delivery, PDF, email), a full-screen POS with scanner support, guest checkout and 80 mm receipts, expenses, reports, and Brevo email notifications.
 

@@ -55,15 +55,16 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
       <Card>
         <CardContent className="grid gap-4">
           <Table>
-            <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Category</TableHead><TableHead>Supplier</TableHead><TableHead className="text-right">On hand</TableHead><TableHead className="text-right">Reorder at</TableHead><TableHead className="text-right">Value</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Category</TableHead><TableHead>Shelf</TableHead><TableHead>Supplier</TableHead><TableHead className="text-right">On hand</TableHead><TableHead className="text-right">Reorder at</TableHead><TableHead className="text-right">Value</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
             <TableBody>
-              {result.rows.length === 0 ? <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">No products match.</TableCell></TableRow> : null}
+              {result.rows.length === 0 ? <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">No products match.</TableCell></TableRow> : null}
               {result.rows.map((p) => {
                 const low = p.reorderLevel > 0 && p.stockQty <= p.reorderLevel;
                 return (
                   <TableRow key={p.id}>
                     <TableCell><Link href={`/products/${p.id}/edit`} className="font-medium hover:underline">{p.name}</Link><div className="font-mono text-xs text-muted-foreground">{p.sku}</div></TableCell>
                     <TableCell>{p.categoryName ?? "—"}</TableCell>
+                    <TableCell>{p.shelfNumber ?? "—"}</TableCell>
                     <TableCell>{p.supplierName ?? "—"}</TableCell>
                     <TableCell className="text-right"><Badge variant={p.stockQty <= 0 ? "destructive" : low ? "outline" : "secondary"} className={low && p.stockQty > 0 ? "border-destructive text-destructive" : ""}>{formatQty(p.stockQty, p.unit)}</Badge></TableCell>
                     <TableCell className="text-right">{p.reorderLevel > 0 ? formatQty(p.reorderLevel) : "—"}</TableCell>

@@ -38,6 +38,8 @@ export async function GET(request: Request) {
             barcode: products.barcode,
             category: categories.name,
             brand: products.brand,
+            shelfNumber: products.shelfNumber,
+            expiryDate: products.expiryDate,
             unit: products.unit,
             allowFractional: products.allowFractional,
             costPaisa: products.costPaisa,

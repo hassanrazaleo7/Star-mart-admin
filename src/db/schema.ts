@@ -237,6 +237,8 @@ export const products = appSchema.table(
     description: text("description"),
     categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
     brand: text("brand"),
+    shelfNumber: text("shelf_number"),
+    expiryDate: date("expiry_date", { mode: "string" }),
     unit: text("unit").notNull().default("pcs"),
     allowFractional: boolean("allow_fractional").notNull().default(false),
     costPaisa: paisa("cost_paisa").notNull().default(0),
@@ -362,7 +364,11 @@ export const purchaseItems = appSchema.table(
     batch: text("batch"),
     expiry: date("expiry", { mode: "string" }),
   },
-  (t) => [index("purchase_items_purchase_idx").on(t.purchaseId), index("purchase_items_product_idx").on(t.productId)],
+  (t) => [
+    index("purchase_items_purchase_idx").on(t.purchaseId),
+    index("purchase_items_product_idx").on(t.productId),
+    index("purchase_items_expiry_idx").on(t.expiry).where(sql`${t.expiry} is not null`),
+  ],
 );
 
 export const supplierPayments = appSchema.table(

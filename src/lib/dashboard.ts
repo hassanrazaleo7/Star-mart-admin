@@ -15,7 +15,7 @@ export async function dashboardData(role: AdminRole, tz: string) {
   const manager = isManager(role);
   const today = parseRange({ range: "today" }, tz);
   const twoWeeks = parseRange({ range: "custom", from: shiftDays(today.to, -13), to: today.to }, tz);
-  const [todaySales, series, [openRow], [stockRow], recent, balances, [approvals], openShifts, [customerRow]] = await Promise.all([
+  const [todaySales, series, [openRow], [stockRow], recent, balances, [approvals], openShifts, [customerRow], lowStockList] = await Promise.all([
     salesReport(today, tz),
     salesReport(twoWeeks, tz),
     db.select({ n: sql<number>`count(*)::int`, pending: sql<number>`count(*) filter (where ${orders.status} = 'pending')::int`, delivery: sql<number>`count(*) filter (where ${orders.status} = 'out_for_delivery')::int` }).from(orders).where(inArray(orders.status, ["pending", "confirmed", "ready", "out_for_delivery"])),
@@ -25,13 +25,13 @@ export async function dashboardData(role: AdminRole, tz: string) {
     manager ? db.select({ n: sql<number>`count(*)::int` }).from(supplierSubmissions).where(eq(supplierSubmissions.status, "pending")) : Promise.resolve([{ n: 0 }]),
     countOpenShifts(),
     db.select({ n: sql<number>`count(*)::int`, withPoints: sql<number>`count(*) filter (where ${customers.pointsBalance} > 0)::int` }).from(customers).where(eq(customers.isActive, true)),
+    db
+      .select({ id: products.id, name: products.name, sku: products.sku, unit: products.unit, stockQty: products.stockQty, reorderLevel: products.reorderLevel })
+      .from(products)
+      .where(and(eq(products.status, "active"), gt(products.reorderLevel, 0), lte(products.stockQty, products.reorderLevel)))
+      .orderBy(products.stockQty)
+      .limit(6),
   ]);
-  const lowStockList = await db
-    .select({ id: products.id, name: products.name, sku: products.sku, unit: products.unit, stockQty: products.stockQty, reorderLevel: products.reorderLevel })
-    .from(products)
-    .where(and(eq(products.status, "active"), gt(products.reorderLevel, 0), lte(products.stockQty, products.reorderLevel)))
-    .orderBy(products.stockQty)
-    .limit(6);
   return {
     today: todaySales.kpis,
     series: series.byDay,

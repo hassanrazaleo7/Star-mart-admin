@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PRODUCT_STATUSES, UNITS } from "@/db/schema";
 import { moneyInputSchema } from "@/lib/money";
-import { checkboxSchema, optionalTextSchema, optionalUuidSchema, quantitySchema, uuidSchema } from "./common";
+import { checkboxSchema, isoDateSchema, optionalTextSchema, optionalUuidSchema, quantitySchema, uuidSchema } from "./common";
 
 export const unitSchema = z.enum(UNITS);
 export const productStatusSchema = z.enum(PRODUCT_STATUSES);
@@ -32,6 +32,8 @@ export const productInputSchema = z.object({
   description: optionalTextSchema(2000),
   categoryId: optionalUuidSchema,
   brand: optionalTextSchema(100),
+  shelfNumber: optionalTextSchema(60),
+  expiryDate: z.preprocess((v) => (v === "" || v == null ? undefined : v), isoDateSchema.optional()).transform((v) => v ?? null),
   unit: unitSchema,
   allowFractional: checkboxSchema,
   costPaisa: moneyInputSchema.refine((p) => p >= 0, "Cost cannot be negative"),
@@ -71,6 +73,8 @@ export const importRowSchema = z.object({
   barcode: barcodeSchema,
   category: optionalTextSchema(80),
   brand: optionalTextSchema(100),
+  shelf_number: optionalTextSchema(60),
+  expiry_date: z.preprocess((v) => (v === "" || v == null ? undefined : v), isoDateSchema.optional()).transform((v) => v ?? null),
   unit: z.preprocess((v) => (typeof v === "string" && v.trim() ? v.trim().toLowerCase() : "pcs"), unitSchema),
   allow_fractional: z.preprocess((v) => ["1", "true", "yes", "y"].includes(String(v ?? "").trim().toLowerCase()), z.boolean()),
   cost: z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? "0" : v), moneyInputSchema),
@@ -94,6 +98,8 @@ export const importRowParsedSchema = z.object({
   barcode: z.string().max(64).nullable(),
   category: z.string().max(80).nullable(),
   brand: z.string().max(100).nullable(),
+  shelf_number: z.string().max(60).nullable(),
+  expiry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   unit: unitSchema,
   allow_fractional: z.boolean(),
   cost: z.number().int().min(0),
