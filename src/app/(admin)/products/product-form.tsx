@@ -77,6 +77,16 @@ export function ProductForm({ product, categories, suppliers, blobEnabled, defau
                   </Field>
                 </div>
                 <Field>
+                  <FieldLabel htmlFor="shelfNumber">Shelf number</FieldLabel>
+                  <Input id="shelfNumber" name="shelfNumber" defaultValue={product?.shelfNumber ?? ""} maxLength={60} placeholder="e.g. A3-02" />
+                  <FieldDescription>Store aisle or shelf location for quick picking.</FieldDescription>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="expiryDate">Product expiry date</FieldLabel>
+                  <Input id="expiryDate" name="expiryDate" type="date" defaultValue={product?.expiryDate ?? ""} />
+                  <FieldDescription>Optional product-level expiry. Use purchase batches to track separate dates for different deliveries.</FieldDescription>
+                </Field>
+                <Field>
                   <FieldLabel htmlFor="description">Description</FieldLabel>
                   <Textarea id="description" name="description" defaultValue={product?.description ?? ""} rows={3} data-scanner-ignore />
                 </Field>

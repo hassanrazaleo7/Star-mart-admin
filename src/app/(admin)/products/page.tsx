@@ -72,6 +72,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 <TableRow>
                   <TableHead>Product</TableHead>
                   <TableHead>Category</TableHead>
+                  <TableHead>Shelf</TableHead>
+                  <TableHead>Expiry</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
                   <TableHead>Status</TableHead>
@@ -105,6 +107,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         </div>
                       </TableCell>
                       <TableCell>{p.categoryName ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell>{p.shelfNumber ?? <span className="text-muted-foreground">—</span>}</TableCell>
+                      <TableCell>{p.expiryDate ?? <span className="text-muted-foreground">—</span>}</TableCell>
                       <TableCell className="text-right tabular-nums">{formatPKR(p.pricePaisa, { symbol })}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant={p.stockQty <= 0 ? "destructive" : low ? "outline" : "secondary"} className={low && p.stockQty > 0 ? "border-destructive text-destructive" : ""}>

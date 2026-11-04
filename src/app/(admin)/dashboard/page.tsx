@@ -49,16 +49,21 @@ export default async function DashboardPage() {
           <KpiCard label="Owed to suppliers" value={formatPKR(d.balances.supplierPayablesPaisa)} tone={d.balances.supplierPayablesPaisa ? "negative" : undefined} />
         </div>
       ) : null}
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <Card>
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)]">
+        <Card className="min-w-0">
           <CardHeader><CardTitle>Last 14 days</CardTitle><CardDescription>Completed sales per day.</CardDescription></CardHeader>
           <CardContent><TimeSeriesChart data={d.series} series={[{ key: "revenuePaisa", label: "Sales" }]} height={220} /></CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle>Low stock</CardTitle><CardDescription><Link href="/stock?low=1" className="underline">See all</Link></CardDescription></CardHeader>
-          <CardContent className="grid gap-2 text-sm">
+          <CardContent className="grid min-w-0 gap-2 text-sm">
             {d.lowStockList.length === 0 ? <p className="text-muted-foreground">Nothing is below its reorder level.</p> : null}
-            {d.lowStockList.map((p) => <div key={p.id} className="flex items-center justify-between gap-2"><Link href={`/products/${p.id}/edit`} className="truncate hover:underline">{p.name}</Link><Badge variant={p.stockQty <= 0 ? "destructive" : "secondary"}>{formatQty(p.stockQty, p.unit)}</Badge></div>)}
+            {d.lowStockList.map((p) => (
+              <div key={p.id} className="flex min-w-0 items-center justify-between gap-2">
+                <Link href={`/products/${p.id}/edit`} title={p.name} className="min-w-0 flex-1 truncate hover:underline">{p.name}</Link>
+                <Badge variant={p.stockQty <= 0 ? "destructive" : "secondary"} className="shrink-0 whitespace-nowrap">{formatQty(p.stockQty, p.unit)}</Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>

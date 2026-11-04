@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -64,16 +64,21 @@ const MESSAGES: Record<string, { kind: "success" | "info" | "error"; text: strin
 };
 
 /** Turns a ?status=... query parameter into a toast and cleans the URL. */
-export function StatusToast({ status }: { status?: string }) {
+export function StatusToast({ status, param }: { status?: string; param?: "msg" | "status" | "status_msg" }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!status) return;
     const message = MESSAGES[status];
     if (message) toast[message.kind](message.text, { id: `status-${status}` }); // stable id: no duplicates under Strict Mode re-runs
-    router.replace(pathname);
-  }, [status, pathname, router]);
+    const params = new URLSearchParams(searchParams.toString());
+    const toastParam = param ?? (params.has("status_msg") ? "status_msg" : "status");
+    params.delete(toastParam);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [status, param, pathname, router, searchParams]);
 
   return null;
 }

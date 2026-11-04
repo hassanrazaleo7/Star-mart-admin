@@ -1,6 +1,6 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 type Props = { page: number; pageCount: number; total: number; pageSize: number; basePath: string; params: Record<string, string | undefined> };
 
@@ -20,15 +20,27 @@ export function PaginationLinks({ page, pageCount, total, pageSize, basePath, pa
         {from}–{to} of {total}
       </span>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" disabled={page <= 1} nativeButton={page <= 1} render={page > 1 ? <Link href={hrefFor(basePath, params, page - 1)} /> : undefined}>
-          <ChevronLeftIcon /> Previous
-        </Button>
+        {page > 1 ? (
+          <Link href={hrefFor(basePath, params, page - 1)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            <ChevronLeftIcon /> Previous
+          </Link>
+        ) : (
+          <span aria-disabled="true" className={buttonVariants({ variant: "outline", size: "sm", className: "pointer-events-none opacity-50" })}>
+            <ChevronLeftIcon /> Previous
+          </span>
+        )}
         <span>
           Page {page} of {pageCount}
         </span>
-        <Button variant="outline" size="sm" disabled={page >= pageCount} nativeButton={page >= pageCount} render={page < pageCount ? <Link href={hrefFor(basePath, params, page + 1)} /> : undefined}>
-          Next <ChevronRightIcon />
-        </Button>
+        {page < pageCount ? (
+          <Link href={hrefFor(basePath, params, page + 1)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Next <ChevronRightIcon />
+          </Link>
+        ) : (
+          <span aria-disabled="true" className={buttonVariants({ variant: "outline", size: "sm", className: "pointer-events-none opacity-50" })}>
+            Next <ChevronRightIcon />
+          </span>
+        )}
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ export async function stockOverview(params: { q?: string; category?: string; sup
         id: products.id,
         name: products.name,
         sku: products.sku,
+        shelfNumber: products.shelfNumber,
         unit: products.unit,
         stockQty: products.stockQty,
         reorderLevel: products.reorderLevel,

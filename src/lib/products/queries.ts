@@ -1,9 +1,11 @@
-import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, products, suppliers } from "@/db/schema";
+import { categories, products, purchaseItems, purchases, suppliers } from "@/db/schema";
 import type { ProductListParams } from "@/lib/validation/products";
 
 export const PRODUCTS_PAGE_SIZE = 25;
+export const EXPIRY_ALERT_DAYS = 30;
+export const EXPIRY_ALERT_LIMIT = 50;
 
 export async function listProducts(params: ProductListParams, scope: { supplierId?: string } = {}) {
   const filters: SQL[] = [];
@@ -35,6 +37,8 @@ export async function listProducts(params: ProductListParams, scope: { supplierI
         sku: products.sku,
         barcode: products.barcode,
         name: products.name,
+        shelfNumber: products.shelfNumber,
+        expiryDate: products.expiryDate,
         unit: products.unit,
         pricePaisa: products.pricePaisa,
         costPaisa: products.costPaisa,
@@ -57,6 +61,63 @@ export async function listProducts(params: ProductListParams, scope: { supplierI
   ]);
 
   return { rows, total: Number(total), page: params.page, pageCount: Math.max(1, Math.ceil(Number(total) / PRODUCTS_PAGE_SIZE)) };
+}
+
+export async function listUpcomingExpiries() {
+  const [batches, productsWithExpiry] = await Promise.all([
+    db
+      .select({
+        id: sql<string>`'batch-' || ${purchaseItems.id}::text`,
+        productId: products.id,
+        productName: products.name,
+        sku: products.sku,
+        shelfNumber: products.shelfNumber,
+        purchaseId: purchases.id,
+        purchaseNumber: purchases.number,
+        batch: purchaseItems.batch,
+        expiry: purchaseItems.expiry,
+        daysToExpiry: sql<number>`${purchaseItems.expiry} - current_date`,
+        source: sql<"Purchase batch">`'Purchase batch'`,
+      })
+      .from(purchaseItems)
+      .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
+      .innerJoin(products, eq(products.id, purchaseItems.productId))
+      .where(
+        and(
+          eq(purchases.status, "received"),
+          eq(products.status, "active"),
+          sql`${products.stockQty} > 0`,
+          gte(purchaseItems.expiry, sql`current_date`),
+          lte(purchaseItems.expiry, sql`current_date + ${EXPIRY_ALERT_DAYS}::integer`),
+        ),
+      ),
+    db
+      .select({
+        id: sql<string>`'product-' || ${products.id}::text`,
+        productId: products.id,
+        productName: products.name,
+        sku: products.sku,
+        shelfNumber: products.shelfNumber,
+        purchaseId: sql<string | null>`null`,
+        purchaseNumber: sql<string | null>`null`,
+        batch: sql<string | null>`null`,
+        expiry: products.expiryDate,
+        daysToExpiry: sql<number>`${products.expiryDate} - current_date`,
+        source: sql<"Product">`'Product'`,
+      })
+      .from(products)
+      .where(
+        and(
+          eq(products.status, "active"),
+          sql`${products.stockQty} > 0`,
+          gte(products.expiryDate, sql`current_date`),
+          lte(products.expiryDate, sql`current_date + ${EXPIRY_ALERT_DAYS}::integer`),
+        ),
+      ),
+  ]);
+  return [...batches, ...productsWithExpiry]
+    .sort((a, b) => a.daysToExpiry - b.daysToExpiry || a.productName.localeCompare(b.productName))
+    .slice(0, EXPIRY_ALERT_LIMIT);
 }
 
 export async function getProduct(id: string) {

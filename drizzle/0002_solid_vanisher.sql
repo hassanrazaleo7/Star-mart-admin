@@ -1,0 +1,2 @@
+ALTER TABLE "star_mart"."products" ADD COLUMN "shelf_number" text;--> statement-breakpoint
+CREATE INDEX "purchase_items_expiry_idx" ON "star_mart"."purchase_items" USING btree ("expiry") WHERE "star_mart"."purchase_items"."expiry" is not null;

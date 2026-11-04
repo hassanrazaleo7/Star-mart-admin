@@ -8,6 +8,8 @@ export const IMPORT_HEADERS = [
   "barcode",
   "category",
   "brand",
+  "shelf_number",
+  "expiry_date",
   "unit",
   "allow_fractional",
   "cost",
@@ -65,6 +67,8 @@ export type ExportRow = {
   barcode: string | null;
   category: string | null;
   brand: string | null;
+  shelfNumber: string | null;
+  expiryDate: string | null;
   unit: string;
   allowFractional: boolean;
   costPaisa: number;
@@ -85,6 +89,8 @@ export function exportRowsToCsv(rows: ExportRow[], includeHeader: boolean): stri
     barcode: r.barcode ?? "",
     category: r.category ?? "",
     brand: r.brand ?? "",
+    shelf_number: r.shelfNumber ?? "",
+    expiry_date: r.expiryDate ?? "",
     unit: r.unit,
     allow_fractional: r.allowFractional ? "true" : "false",
     cost: paisaToDecimalString(r.costPaisa),
@@ -109,6 +115,8 @@ export function csvTemplate(): string {
         barcode: "2000000000017",
         category: "Grocery",
         brand: "Guard",
+        shelf_number: "A1-03",
+        expiry_date: "",
         unit: "pcs",
         allow_fractional: "false",
         cost: "1450.00",

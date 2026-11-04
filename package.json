@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node init && next dev",
-    "build": "node init && next build",
-    "start": "node init && next start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
@@ -14,7 +14,8 @@
     "db:reset": "tsx scripts/db-reset.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
-    "check:pricing": "tsx scripts/check-pricing.ts"
+    "check:pricing": "tsx scripts/check-pricing.ts",
+    "check:expiry": "tsx scripts/check-expiry.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

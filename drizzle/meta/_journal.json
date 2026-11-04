@@ -15,6 +15,20 @@
       "when": 1792460747702,
       "tag": "0001_slim_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793810806641,
+      "tag": "0002_solid_vanisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793812748976,
+      "tag": "0003_abnormal_bill_hollister",
+      "breakpoints": true
     }
   ]
 }
