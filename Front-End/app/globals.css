@@ -1,0 +1,54 @@
+body {
+  margin: 0;
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.nav-icons {
+  position: relative;
+}
+
+.account-trigger {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+}
+
+header.site-head .nav-inner .nav-icons .nav-drop.account-nav > .nav-dropdown {
+  right: 0;
+  left: auto;
+  min-width: 200px;
+}
+
+header.site-head .nav-inner .nav-icons .nav-drop.account-nav.open > .nav-dropdown {
+  display: block;
+}
+
+header.site-head .account-nav .account-trigger {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .nav-inner {
+    min-height: 52px;
+  }
+
+  header.site-head .nav-inner .nav-icons .nav-drop.account-nav > .nav-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: auto;
+    background: #fff;
+    color: #333;
+    border: 1px solid #eee;
+    box-shadow: 0 8px 25px #0002;
+  }
+}
